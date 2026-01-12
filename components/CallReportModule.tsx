@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Phone, Calendar, Clock, MessageSquare, Edit2, Trash2, Search, Filter, PhoneCall, TrendingUp, CheckCircle2, ChevronDown, ChevronUp, Save, Send, User } from 'lucide-react';
 import { CallReport, Customer, Agent, VisitOutcome } from '../types';
-import { db } from '../services/db';
+import { prisma } from '../services/db';
 
 interface CallReportModuleProps {
   reports: CallReport[];
@@ -30,7 +30,8 @@ const CallReportModule: React.FC<CallReportModuleProps> = ({ reports, customers,
     e.preventDefault();
     if (!quickLog.customerId || !quickLog.notes) return;
     
-    db.addCallReport({
+    // Using prisma client instead of db wrapper
+    prisma.callReport.create({
       customerId: quickLog.customerId,
       agentId: 'a1', // Assuming current user for quick log
       date: new Date().toISOString().split('T')[0],
@@ -51,7 +52,7 @@ const CallReportModule: React.FC<CallReportModuleProps> = ({ reports, customers,
             <div className="p-2 bg-swift-red text-white rounded-xl">
               <MessageSquare size={18} />
             </div>
-            <h3 className="font-bold text-swift-navy">Quick Interaction Log</h3>
+            <h3 className="font-bold text-swift-navy">Quick Interaction Log (Connected to Prisma)</h3>
           </div>
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Dispatch Mode</span>
         </div>

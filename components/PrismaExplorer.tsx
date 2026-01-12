@@ -1,8 +1,34 @@
 
-import React from 'react';
-import { Database, Copy, FileCode, Server, Share2, Terminal } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Database, Copy, FileCode, Server, Share2, Terminal, Activity, RefreshCw, Layers, Users, PhoneCall, Truck } from 'lucide-react';
+import { prisma } from '../services/db';
 
 const PrismaExplorer: React.FC = () => {
+  const [isResetting, setIsResetting] = useState(false);
+  const [stats, setStats] = useState({
+    customers: 0,
+    agents: 0,
+    calls: 0,
+    logistics: 0,
+    inventory: 0
+  });
+
+  useEffect(() => {
+    const updateStats = () => {
+      setStats({
+        customers: prisma.customer.findMany().length,
+        agents: prisma.agent.findMany().length,
+        calls: prisma.callReport.findMany().length,
+        logistics: prisma.logistics.findMany().length,
+        inventory: prisma.inventory.findMany().length
+      });
+    };
+
+    updateStats();
+    window.addEventListener('db-update', updateStats);
+    return () => window.removeEventListener('db-update', updateStats);
+  }, []);
+
   const schema = `// This is your Prisma schema file,
 // generated specifically for Swift Plastics Inc.
 
@@ -99,6 +125,16 @@ enum StockStatus {
     alert('Prisma Schema copied to clipboard!');
   };
 
+  const handleMigration = () => {
+    if (confirm("Execute Migration? This will reset all factory data to production defaults.")) {
+      setIsResetting(true);
+      localStorage.removeItem('polyflow_db');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
       <div className="bg-slate-900 rounded-3xl p-10 text-white shadow-2xl relative overflow-hidden border border-white/10">
@@ -107,13 +143,13 @@ enum StockStatus {
         </div>
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-4 bg-white/10 w-fit px-3 py-1 rounded-full backdrop-blur-md border border-white/10">
-            <Terminal size={14} className="text-emerald-400" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Prisma ORM Engine</span>
+            <Activity size={14} className="text-emerald-400" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Database Connected: Swift-Plastics-Prod</span>
           </div>
-          <h2 className="text-4xl font-black mb-4 uppercase tracking-tighter">Schema Architect</h2>
+          <h2 className="text-4xl font-black mb-4 uppercase tracking-tighter">Prisma Schema Architect</h2>
           <p className="text-slate-400 text-lg max-w-2xl leading-relaxed">
-            Standardize your manufacturing data layer. Below is the relational schema 
-            used to power the Swift Plastics OS, optimized for PostgreSQL deployment.
+            Real-time link established between UI and Storage. 
+            All factory modules interact via the Type-Safe Prisma Client simulation.
           </p>
           <div className="flex gap-4 mt-8">
             <button 
@@ -123,9 +159,13 @@ enum StockStatus {
               <Copy size={18} />
               Export .prisma
             </button>
-            <button className="flex items-center gap-2 px-6 py-3 bg-white/10 text-white border border-white/20 rounded-xl font-bold hover:bg-white/20 transition backdrop-blur-md">
-              <Server size={18} />
-              Database Sync
+            <button 
+              onClick={handleMigration}
+              disabled={isResetting}
+              className="flex items-center gap-2 px-6 py-3 bg-swift-red text-white rounded-xl font-bold hover:opacity-90 transition active:scale-95 shadow-lg disabled:opacity-50"
+            >
+              <RefreshCw size={18} className={isResetting ? 'animate-spin' : ''} />
+              {isResetting ? 'Migrating...' : 'Run Migration (Reset)'}
             </button>
           </div>
         </div>
@@ -169,31 +209,74 @@ enum StockStatus {
         </div>
 
         <div className="space-y-6">
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50 rounded-bl-full opacity-50 flex items-center justify-center -mr-4 -mt-4">
+              <Server className="text-emerald-200" size={48} />
+            </div>
+            <h4 className="font-bold text-slate-800 mb-6 flex items-center gap-2 relative z-10">
+              <Activity size={18} className="text-emerald-500" />
+              Live DB Stats
+            </h4>
+            <div className="space-y-4 relative z-10">
+              <div className="flex justify-between items-center p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Users size={14} className="text-blue-500" />
+                  <span className="text-xs font-bold text-slate-600">Wholesalers</span>
+                </div>
+                <span className="font-black text-slate-800">{stats.customers}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="flex items-center gap-2">
+                  <PhoneCall size={14} className="text-swift-red" />
+                  <span className="text-xs font-bold text-slate-600">Call Reports</span>
+                </div>
+                <span className="font-black text-slate-800">{stats.calls}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Layers size={14} className="text-indigo-500" />
+                  <span className="text-xs font-bold text-slate-600">Inventory</span>
+                </div>
+                <span className="font-black text-slate-800">{stats.inventory}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Truck size={14} className="text-amber-500" />
+                  <span className="text-xs font-bold text-slate-600">Logistics</span>
+                </div>
+                <span className="font-black text-slate-800">{stats.logistics}</span>
+              </div>
+            </div>
+          </div>
+
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
             <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
               <Share2 size={18} className="text-swift-red" />
               Entity Relations
             </h4>
-            <div className="space-y-4">
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">SalesAgent 1:N</p>
-                <p className="text-sm font-bold text-swift-navy">Wholesalers</p>
+            <div className="space-y-2 text-xs font-medium text-slate-500">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-swift-red"></div>
+                SalesAgent <span className="font-bold text-slate-700">1:N</span> Wholesalers
               </div>
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Wholesaler 1:N</p>
-                <p className="text-sm font-bold text-swift-navy">InventoryItems</p>
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-swift-red"></div>
+                Wholesaler <span className="font-bold text-slate-700">1:N</span> Inventory
               </div>
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">SalesAgent 1:N</p>
-                <p className="text-sm font-bold text-swift-navy">CallReports</p>
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-swift-red"></div>
+                Wholesaler <span className="font-bold text-slate-700">1:N</span> CallReports
               </div>
             </div>
           </div>
 
           <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100">
-            <h4 className="font-bold text-emerald-800 mb-2">Performance Tip</h4>
-            <p className="text-xs text-emerald-700 leading-relaxed">
-              Indices have been automatically added to <code className="bg-white/50 px-1 rounded">wholesaler.email</code> and <code className="bg-white/50 px-1 rounded">agent.id</code> for rapid query execution during peak factory dispatch hours.
+            <h4 className="font-bold text-emerald-800 mb-2 text-sm flex items-center gap-1.5">
+              <Terminal size={14} />
+              Query Performance
+            </h4>
+            <p className="text-[10px] text-emerald-700 leading-relaxed uppercase font-bold tracking-tight">
+              Optimization enabled: Indices on Wholesaler(email), Agent(id), CallReport(date).
             </p>
           </div>
         </div>

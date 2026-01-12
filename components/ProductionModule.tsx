@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Package, Search, AlertTriangle, CheckCircle, ArrowRight, History, Bell, X, AlertCircle, Trash2, Edit3, Save, Layers } from 'lucide-react';
 import { Customer, InventoryItem } from '../types';
-import { db } from '../services/db';
+import { prisma } from '../services/db';
 
 interface ProductionModuleProps {
   customers: Customer[];
@@ -17,12 +17,12 @@ const ProductionModule: React.FC<ProductionModuleProps> = ({ customers, inventor
   const [editValue, setEditValue] = useState<number>(0);
 
   const handleRestock = (id: string) => {
-    db.updateInventory(id, 100); // Standard factory batch size
+    prisma.inventory.increment(id, 100); // Using prisma client
   };
 
   const handleDelete = (id: string) => {
     if (confirm('Permanently remove this plastic production item from the catalog?')) {
-      db.removeInventory(id);
+      prisma.inventory.delete(id); // Using prisma client
     }
   };
 
@@ -32,8 +32,7 @@ const ProductionModule: React.FC<ProductionModuleProps> = ({ customers, inventor
   };
 
   const saveEdit = (id: string) => {
-    // Fix: Argument of type 'number' is not assignable to parameter of type '{ quantity: number; }'
-    db.setInventoryQuantity(id, { quantity: editValue });
+    prisma.inventory.update(id, { quantity: editValue }); // Using prisma client
     setEditingItemId(null);
   };
 
