@@ -32,7 +32,8 @@ const ProductionModule: React.FC<ProductionModuleProps> = ({ customers, inventor
   };
 
   const saveEdit = (id: string) => {
-    db.setInventoryQuantity(id, editValue);
+    // Fix: Argument of type 'number' is not assignable to parameter of type '{ quantity: number; }'
+    db.setInventoryQuantity(id, { quantity: editValue });
     setEditingItemId(null);
   };
 

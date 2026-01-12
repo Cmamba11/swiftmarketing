@@ -56,169 +56,205 @@ const INITIAL_DATA: DBStructure = {
   }
 };
 
-export const db = {
+const _refreshInventoryStatus = (item: InventoryItem) => {
+  if (item.quantity === 0) item.status = 'Out of Stock';
+  else if (item.quantity <= 30) item.status = 'Low Stock';
+  else item.status = 'In Stock';
+};
+
+const internalDb = {
   get(): DBStructure {
     const data = localStorage.getItem(DB_KEY);
     if (!data) {
-      this.save(INITIAL_DATA);
+      // Fix: Explicitly reference internalDb instead of 'this' to avoid binding issues
+      internalDb.save(INITIAL_DATA);
       return INITIAL_DATA;
     }
     return JSON.parse(data);
   },
-
   save(data: DBStructure) {
     localStorage.setItem(DB_KEY, JSON.stringify(data));
     window.dispatchEvent(new Event('db-update'));
-  },
+  }
+};
 
-  updateConfig(newConfig: Partial<SystemConfig>) {
-    const data = this.get();
-    data.config = { ...data.config, ...newConfig, lastUpdated: new Date().toISOString() };
-    this.save(data);
-  },
-
-  // Call Report Operations
-  addCallReport(report: Omit<CallReport, 'id'>) {
-    const data = this.get();
-    const newReport = { ...report, id: crypto.randomUUID() };
-    data.callReports.push(newReport);
-    this.save(data);
-    return newReport;
-  },
-  updateCallReport(id: string, updates: Partial<CallReport>) {
-    const data = this.get();
-    data.callReports = data.callReports.map(c => c.id === id ? { ...c, ...updates } : c);
-    this.save(data);
-  },
-  deleteCallReport(id: string) {
-    const data = this.get();
-    data.callReports = data.callReports.filter(c => c.id !== id);
-    this.save(data);
-  },
-
-  // Customer Operations
-  addCustomer(customer: Omit<Customer, 'id'>) {
-    const data = this.get();
-    const newCustomer = { ...customer, id: crypto.randomUUID() };
-    data.customers.push(newCustomer);
-    this.save(data);
-    return newCustomer;
-  },
-  updateCustomer(id: string, updates: Partial<Customer>) {
-    const data = this.get();
-    data.customers = data.customers.map(c => c.id === id ? { ...c, ...updates } : c);
-    this.save(data);
-  },
-  deleteCustomer(id: string) {
-    const data = this.get();
-    data.customers = data.customers.filter(c => c.id !== id);
-    data.inventory = data.inventory.filter(i => i.customerId !== id);
-    this.save(data);
-  },
-
-  // Agent Operations
-  addAgent(agent: Omit<Agent, 'id'>) {
-    const data = this.get();
-    const newAgent = { ...agent, id: crypto.randomUUID() };
-    data.agents.push(newAgent);
-    this.save(data);
-    return newAgent;
-  },
-  updateAgent(id: string, updates: Partial<Agent>) {
-    const data = this.get();
-    data.agents = data.agents.map(a => a.id === id ? { ...a, ...updates } : a);
-    this.save(data);
-  },
-  deleteAgent(id: string) {
-    const data = this.get();
-    data.agents = data.agents.filter(a => a.id !== id);
-    this.save(data);
-  },
-
-  // Logistics Operations
-  addLogisticsReport(report: Omit<LogisticsReport, 'id'>) {
-    const data = this.get();
-    const newReport = { ...report, id: crypto.randomUUID() };
-    data.logistics.push(newReport);
-    this.save(data);
-    return newReport;
-  },
-  updateLogistics(id: string, updates: Partial<LogisticsReport>) {
-    const data = this.get();
-    data.logistics = data.logistics.map(l => l.id === id ? { ...l, ...updates } : l);
-    this.save(data);
-  },
-  deleteLogistics(id: string) {
-    const data = this.get();
-    data.logistics = data.logistics.filter(l => l.id !== id);
-    this.save(data);
-  },
-
-  // Commission Operations
-  addCommission(commission: Omit<Commission, 'id'>) {
-    const data = this.get();
-    const newCommission = { ...commission, id: crypto.randomUUID() };
-    data.commissions.push(newCommission);
-    this.save(data);
-    return newCommission;
-  },
-  updateCommission(id: string, updates: Partial<Commission>) {
-    const data = this.get();
-    data.commissions = data.commissions.map(c => c.id === id ? { ...c, ...updates } : c);
-    this.save(data);
-  },
-  deleteCommission(id: string) {
-    const data = this.get();
-    data.commissions = data.commissions.filter(c => c.id !== id);
-    this.save(data);
-  },
-  processBatchCommissions() {
-    const data = this.get();
-    data.commissions = data.commissions.map(c => ({ ...c, status: 'Paid' as const }));
-    this.save(data);
-  },
-
-  // Inventory Operations
-  updateInventory(id: string, quantity: number) {
-    const data = this.get();
-    const item = data.inventory.find(i => i.id === id);
-    if (item) {
-      item.quantity += quantity;
-      this._refreshItemStatus(item);
-      item.lastRestocked = new Date().toISOString().split('T')[0];
-      this.save(data);
+/**
+ * MOCK PRISMA CLIENT
+ * A frontend-safe ORM simulation for Swift Plastics OS
+ */
+export const prisma = {
+  customer: {
+    findMany: () => internalDb.get().customers,
+    findUnique: (id: string) => internalDb.get().customers.find(c => c.id === id),
+    create: (data: Omit<Customer, 'id'>) => {
+      const state = internalDb.get();
+      const newItem = { ...data, id: crypto.randomUUID() };
+      state.customers.push(newItem);
+      internalDb.save(state);
+      return newItem;
+    },
+    update: (id: string, data: Partial<Customer>) => {
+      const state = internalDb.get();
+      state.customers = state.customers.map(c => c.id === id ? { ...c, ...data } : c);
+      internalDb.save(state);
+    },
+    delete: (id: string) => {
+      const state = internalDb.get();
+      state.customers = state.customers.filter(c => c.id !== id);
+      state.inventory = state.inventory.filter(i => i.customerId !== id);
+      internalDb.save(state);
     }
   },
-  setInventoryQuantity(id: string, newQuantity: number) {
-    const data = this.get();
-    const item = data.inventory.find(i => i.id === id);
-    if (item) {
-      item.quantity = Math.max(0, newQuantity);
-      this._refreshItemStatus(item);
-      item.lastRestocked = new Date().toISOString().split('T')[0];
-      this.save(data);
+  agent: {
+    findMany: () => internalDb.get().agents,
+    create: (data: Omit<Agent, 'id'>) => {
+      const state = internalDb.get();
+      const newItem = { ...data, id: crypto.randomUUID() };
+      state.agents.push(newItem);
+      internalDb.save(state);
+      return newItem;
+    },
+    update: (id: string, data: Partial<Agent>) => {
+      const state = internalDb.get();
+      state.agents = state.agents.map(a => a.id === id ? { ...a, ...data } : a);
+      internalDb.save(state);
+    },
+    delete: (id: string) => {
+      const state = internalDb.get();
+      state.agents = state.agents.filter(a => a.id !== id);
+      internalDb.save(state);
     }
   },
-  removeInventory(id: string) {
-    const data = this.get();
-    data.inventory = data.inventory.filter(i => i.id !== id);
-    this.save(data);
+  callReport: {
+    findMany: () => internalDb.get().callReports,
+    create: (data: Omit<CallReport, 'id'>) => {
+      const state = internalDb.get();
+      const newItem = { ...data, id: crypto.randomUUID() };
+      state.callReports.push(newItem);
+      internalDb.save(state);
+      return newItem;
+    },
+    update: (id: string, data: Partial<CallReport>) => {
+      const state = internalDb.get();
+      state.callReports = state.callReports.map(c => c.id === id ? { ...c, ...data } : c);
+      internalDb.save(state);
+    },
+    delete: (id: string) => {
+      const state = internalDb.get();
+      state.callReports = state.callReports.filter(c => c.id !== id);
+      internalDb.save(state);
+    }
   },
-  addInventory(item: Omit<InventoryItem, 'id'>) {
-    const data = this.get();
-    const newItem = { ...item, id: crypto.randomUUID() };
-    this._refreshItemStatus(newItem);
-    data.inventory.push(newItem);
-    this.save(data);
-    return newItem;
+  logistics: {
+    findMany: () => internalDb.get().logistics,
+    create: (data: Omit<LogisticsReport, 'id'>) => {
+      const state = internalDb.get();
+      const newItem = { ...data, id: crypto.randomUUID() };
+      state.logistics.push(newItem);
+      internalDb.save(state);
+      return newItem;
+    },
+    update: (id: string, data: Partial<LogisticsReport>) => {
+      const state = internalDb.get();
+      state.logistics = state.logistics.map(l => l.id === id ? { ...l, ...data } : l);
+      internalDb.save(state);
+    },
+    delete: (id: string) => {
+      const state = internalDb.get();
+      state.logistics = state.logistics.filter(l => l.id !== id);
+      internalDb.save(state);
+    }
   },
-  _refreshItemStatus(item: InventoryItem) {
-    if (item.quantity === 0) {
-      item.status = 'Out of Stock';
-    } else if (item.quantity <= 30) {
-      item.status = 'Low Stock';
-    } else {
-      item.status = 'In Stock';
+  commission: {
+    findMany: () => internalDb.get().commissions,
+    create: (data: Omit<Commission, 'id'>) => {
+      const state = internalDb.get();
+      const newItem = { ...data, id: crypto.randomUUID() };
+      state.commissions.push(newItem);
+      internalDb.save(state);
+      return newItem;
+    },
+    update: (id: string, data: Partial<Commission>) => {
+      const state = internalDb.get();
+      state.commissions = state.commissions.map(c => c.id === id ? { ...c, ...data } : c);
+      internalDb.save(state);
+    },
+    delete: (id: string) => {
+      const state = internalDb.get();
+      state.commissions = state.commissions.filter(c => c.id !== id);
+      internalDb.save(state);
+    },
+    processBatch: () => {
+      const state = internalDb.get();
+      state.commissions = state.commissions.map(c => ({ ...c, status: 'Paid' as const }));
+      internalDb.save(state);
+    }
+  },
+  inventory: {
+    findMany: () => internalDb.get().inventory,
+    create: (data: Omit<InventoryItem, 'id'>) => {
+      const state = internalDb.get();
+      const newItem = { ...data, id: crypto.randomUUID() };
+      _refreshInventoryStatus(newItem);
+      state.inventory.push(newItem);
+      internalDb.save(state);
+      return newItem;
+    },
+    update: (id: string, data: { quantity: number }) => {
+      const state = internalDb.get();
+      const item = state.inventory.find(i => i.id === id);
+      if (item) {
+        item.quantity = Math.max(0, data.quantity);
+        _refreshInventoryStatus(item);
+        item.lastRestocked = new Date().toISOString().split('T')[0];
+        internalDb.save(state);
+      }
+    },
+    increment: (id: string, amount: number) => {
+      const state = internalDb.get();
+      const item = state.inventory.find(i => i.id === id);
+      if (item) {
+        item.quantity += amount;
+        _refreshInventoryStatus(item);
+        item.lastRestocked = new Date().toISOString().split('T')[0];
+        internalDb.save(state);
+      }
+    },
+    delete: (id: string) => {
+      const state = internalDb.get();
+      state.inventory = state.inventory.filter(i => i.id !== id);
+      internalDb.save(state);
     }
   }
+};
+
+// Backwards compatibility for the old 'db' export
+export const db = {
+  get: () => internalDb.get(),
+  updateConfig: (updates: Partial<SystemConfig>) => {
+    const state = internalDb.get();
+    state.config = { ...state.config, ...updates, lastUpdated: new Date().toISOString() };
+    internalDb.save(state);
+  },
+  // Map old method names to prisma client
+  addCallReport: (data: Omit<CallReport, 'id'>) => prisma.callReport.create(data),
+  updateCallReport: (id: string, data: Partial<CallReport>) => prisma.callReport.update(id, data),
+  deleteCallReport: (id: string) => prisma.callReport.delete(id),
+  addCustomer: (data: Omit<Customer, 'id'>) => prisma.customer.create(data),
+  updateCustomer: (id: string, data: Partial<Customer>) => prisma.customer.update(id, data),
+  deleteCustomer: (id: string) => prisma.customer.delete(id),
+  addAgent: (data: Omit<Agent, 'id'>) => prisma.agent.create(data),
+  updateAgent: (id: string, data: Partial<Agent>) => prisma.agent.update(id, data),
+  deleteAgent: (id: string) => prisma.agent.delete(id),
+  addLogisticsReport: (data: Omit<LogisticsReport, 'id'>) => prisma.logistics.create(data),
+  updateLogistics: (id: string, data: Partial<LogisticsReport>) => prisma.logistics.update(id, data),
+  deleteLogistics: (id: string) => prisma.logistics.delete(id),
+  addCommission: (data: Omit<Commission, 'id'>) => prisma.commission.create(data),
+  updateCommission: (id: string, data: Partial<Commission>) => prisma.commission.update(id, data),
+  deleteCommission: (id: string) => prisma.commission.delete(id),
+  processBatchCommissions: () => prisma.commission.processBatch(),
+  updateInventory: (id: string, amount: number) => prisma.inventory.increment(id, amount),
+  setInventoryQuantity: (id: string, data: { quantity: number }) => prisma.inventory.update(id, data),
+  removeInventory: (id: string) => prisma.inventory.delete(id),
+  addInventory: (data: Omit<InventoryItem, 'id'>) => prisma.inventory.create(data)
 };

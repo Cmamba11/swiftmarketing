@@ -82,4 +82,4 @@ export interface SystemConfig {
   lastUpdated: string;
 }
 
-export type ViewState = 'DASHBOARD' | 'CUSTOMERS' | 'AGENTS' | 'LOGISTICS' | 'COMMISSIONS' | 'AI_ARCHITECT' | 'PRODUCTION' | 'CALL_REPORTS';
+export type ViewState = 'DASHBOARD' | 'CUSTOMERS' | 'AGENTS' | 'LOGISTICS' | 'COMMISSIONS' | 'AI_ARCHITECT' | 'PRODUCTION' | 'CALL_REPORTS' | 'PRISMA_SCHEMA';

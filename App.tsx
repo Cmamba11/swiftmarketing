@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  LayoutDashboard, Users, UserSquare2, Truck, Banknote, Sparkles, Menu, X, Plus, Package, BarChart3, TrendingUp, Droplets, MapPin, Search, Bell, Settings, PhoneCall, History
+  LayoutDashboard, Users, UserSquare2, Truck, Banknote, Sparkles, Menu, X, Plus, Package, BarChart3, TrendingUp, Droplets, MapPin, Search, Bell, Settings, PhoneCall, Database
 } from 'lucide-react';
 import { ViewState, CustomerType, Agent, Customer, LogisticsReport, Commission, CallReport, VisitOutcome } from './types';
-import { db } from './services/db';
+import { db, prisma } from './services/db';
 import DashboardView from './components/DashboardView';
 import CustomerModule from './components/CustomerModule';
 import AgentModule from './components/AgentModule';
@@ -13,6 +13,7 @@ import CommissionModule from './components/CommissionModule';
 import AIArchitect from './components/AIArchitect';
 import ProductionModule from './components/ProductionModule';
 import CallReportModule from './components/CallReportModule';
+import PrismaExplorer from './components/PrismaExplorer';
 
 const SwiftLogo = ({ className = "h-12" }: { className?: string }) => (
   <svg viewBox="0 0 300 150" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -131,12 +132,12 @@ const App: React.FC = () => {
   const handleDelete = (id: string, view: ViewState) => {
     if (!confirm('Permanently delete this record? This action cannot be undone.')) return;
     switch (view) {
-      case 'CUSTOMERS': db.deleteCustomer(id); break;
-      case 'AGENTS': db.deleteAgent(id); break;
-      case 'LOGISTICS': db.deleteLogistics(id); break;
-      case 'COMMISSIONS': db.deleteCommission(id); break;
-      case 'PRODUCTION': db.removeInventory(id); break;
-      case 'CALL_REPORTS': db.deleteCallReport(id); break;
+      case 'CUSTOMERS': prisma.customer.delete(id); break;
+      case 'AGENTS': prisma.agent.delete(id); break;
+      case 'LOGISTICS': prisma.logistics.delete(id); break;
+      case 'COMMISSIONS': prisma.commission.delete(id); break;
+      case 'PRODUCTION': prisma.inventory.delete(id); break;
+      case 'CALL_REPORTS': prisma.callReport.delete(id); break;
     }
     if (editingItem?.id === id) {
       setEditingItem(null);
@@ -173,7 +174,7 @@ const App: React.FC = () => {
           productsPitched: editingItem?.productsPitched || [],
           status: (formData.get('status') as string) || 'Active'
         };
-        id ? db.updateCustomer(id, payload) : db.addCustomer(payload);
+        id ? prisma.customer.update(id, payload) : prisma.customer.create(payload);
       } else if (activeView === 'AGENTS') {
         const payload = {
           name: formData.get('name') as string,
@@ -181,7 +182,7 @@ const App: React.FC = () => {
           performanceScore: parseInt(formData.get('perf') as string) || 0,
           customersAcquired: editingItem?.customersAcquired || 0
         };
-        id ? db.updateAgent(id, payload) : db.addAgent(payload);
+        id ? prisma.agent.update(id, payload) : prisma.agent.create(payload);
       } else if (activeView === 'PRODUCTION') {
         const payload = {
           customerId: formData.get('customerId') as string,
@@ -191,7 +192,7 @@ const App: React.FC = () => {
           status: (editingItem?.status as any) || 'In Stock',
           lastRestocked: editingItem?.lastRestocked || new Date().toISOString().split('T')[0]
         };
-        id ? db.setInventoryQuantity(id, payload.quantity) : db.addInventory(payload);
+        id ? prisma.inventory.update(id, { quantity: payload.quantity }) : prisma.inventory.create(payload);
       } else if (activeView === 'LOGISTICS') {
         const payload = {
           agentId: formData.get('agentId') as string,
@@ -200,7 +201,7 @@ const App: React.FC = () => {
           distanceCovered: parseFloat(formData.get('dist') as string) || 0,
           date: (formData.get('date') as string) || new Date().toISOString().split('T')[0]
         };
-        id ? db.updateLogistics(id, payload) : db.addLogisticsReport(payload);
+        id ? prisma.logistics.update(id, payload) : prisma.logistics.create(payload);
       } else if (activeView === 'COMMISSIONS') {
         const breakdownStr = formData.get('breakdown') as string;
         const breakdown = breakdownStr ? breakdownStr.split('\n').filter(line => line.includes(':')).map(line => {
@@ -215,7 +216,7 @@ const App: React.FC = () => {
           date: (formData.get('date') as string) || new Date().toISOString().split('T')[0],
           breakdown: breakdown.length > 0 ? breakdown : undefined
         };
-        id ? db.updateCommission(id, payload) : db.addCommission(payload);
+        id ? prisma.commission.update(id, payload) : prisma.commission.create(payload);
       } else if (activeView === 'CALL_REPORTS') {
         const payload = {
           customerId: formData.get('customerId') as string,
@@ -225,7 +226,7 @@ const App: React.FC = () => {
           outcome: (formData.get('outcome') as VisitOutcome) || VisitOutcome.INTERESTED,
           notes: formData.get('notes') as string
         };
-        id ? db.updateCallReport(id, payload) : db.addCallReport(payload);
+        id ? prisma.callReport.update(id, payload) : prisma.callReport.create(payload);
       }
       setShowModal(false);
       setEditingItem(null);
@@ -274,8 +275,17 @@ const App: React.FC = () => {
             ))}
             <div className="pt-4 mt-4 border-t border-white/10">
               <button
-                onClick={() => setActiveView('AI_ARCHITECT')}
+                onClick={() => setActiveView('PRISMA_SCHEMA')}
                 className={`flex items-center w-full gap-3 px-4 py-3 rounded-lg transition-all ${
+                  activeView === 'PRISMA_SCHEMA' ? 'bg-white/20 text-white shadow-md' : 'text-white/60 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <Database size={20} />
+                <span className={`font-medium ${!sidebarOpen && 'hidden'}`}>Prisma Schema</span>
+              </button>
+              <button
+                onClick={() => setActiveView('AI_ARCHITECT')}
+                className={`flex items-center w-full gap-3 px-4 py-3 rounded-lg transition-all mt-2 ${
                   activeView === 'AI_ARCHITECT' ? 'bg-white/20 text-white shadow-md' : 'text-white/60 hover:bg-white/5 hover:text-white'
                 }`}
               >
@@ -297,13 +307,13 @@ const App: React.FC = () => {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="h-2 w-2 rounded-full bg-swift-red animate-pulse" />
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Real-time Telemetry</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ORM Architecture: Prisma</span>
               </div>
               <h2 className="text-3xl font-black text-swift-navy uppercase tracking-tight">{activeView.replace('_', ' ')}</h2>
             </div>
             
             <div className="flex gap-4">
-               {activeView !== 'DASHBOARD' && activeView !== 'AI_ARCHITECT' && (
+               {activeView !== 'DASHBOARD' && activeView !== 'AI_ARCHITECT' && activeView !== 'PRISMA_SCHEMA' && (
                  <button onClick={handleNewEntry} className="flex items-center gap-2 px-6 py-3 bg-swift-red text-white rounded-xl hover:opacity-90 transition shadow-lg shadow-red-200 font-black uppercase text-xs tracking-wider">
                    <Plus size={18} />
                    <span>Create Entry</span>
@@ -321,6 +331,7 @@ const App: React.FC = () => {
             {activeView === 'AI_ARCHITECT' && <AIArchitect currentConfig={dbState.config} />}
             {activeView === 'PRODUCTION' && <ProductionModule customers={dbState.customers} inventory={dbState.inventory} />}
             {activeView === 'CALL_REPORTS' && <CallReportModule reports={filteredCallReports} customers={dbState.customers} agents={dbState.agents} onEdit={handleEdit} onDelete={(id) => handleDelete(id, 'CALL_REPORTS')} searchTerm={globalSearch} onSearchChange={setGlobalSearch} />}
+            {activeView === 'PRISMA_SCHEMA' && <PrismaExplorer />}
           </div>
         </main>
       </div>
