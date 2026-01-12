@@ -1,0 +1,7 @@
+{
+  "name": "Swift Plastics OS",
+  "description": "Custom management suite for Swift Plastics Inc., specialized in rollers and packing bag production.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
