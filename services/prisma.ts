@@ -99,16 +99,36 @@ export const prisma = {
     create: (data: any) => {
       logQuery('salesAgent', 'create', data);
       const state = getRaw();
-      const newItem = { ...data, id: crypto.randomUUID(), customersAcquired: 0 };
+      const newItem = { ...data, id: crypto.randomUUID(), customersAcquired: 0, performanceScore: 0 };
       state.agents.push(newItem);
       saveRaw(state);
       return newItem;
+    },
+    delete: (id: string) => {
+      logQuery('salesAgent', 'delete', id);
+      const state = getRaw();
+      state.agents = state.agents.filter(a => a.id !== id);
+      saveRaw(state);
     }
   },
   inventory: {
     findMany: () => {
       logQuery('inventory', 'findMany', {});
       return getRaw().inventory;
+    },
+    create: (data: Omit<InventoryItem, 'id' | 'status' | 'lastRestocked'>) => {
+      logQuery('inventory', 'create', data);
+      const state = getRaw();
+      const status = data.quantity > 30 ? 'In Stock' : (data.quantity > 0 ? 'Low Stock' : 'Out of Stock');
+      const newItem: InventoryItem = { 
+        ...data, 
+        id: crypto.randomUUID(), 
+        status: status as any, 
+        lastRestocked: new Date().toISOString() 
+      };
+      state.inventory.push(newItem);
+      saveRaw(state);
+      return newItem;
     },
     delete: (id: string) => {
       logQuery('inventory', 'delete', id);
@@ -161,12 +181,32 @@ export const prisma = {
       state.calls.push(newItem);
       saveRaw(state);
       return newItem;
+    },
+    delete: (id: string) => {
+      logQuery('callReport', 'delete', id);
+      const state = getRaw();
+      state.calls = state.calls.filter(c => c.id !== id);
+      saveRaw(state);
     }
   },
   logistics: {
     findMany: () => {
       logQuery('logistics', 'findMany', {});
       return getRaw().logistics;
+    },
+    create: (data: any) => {
+      logQuery('logistics', 'create', data);
+      const state = getRaw();
+      const newItem = { ...data, id: crypto.randomUUID(), date: new Date().toISOString() };
+      state.logistics.push(newItem);
+      saveRaw(state);
+      return newItem;
+    },
+    delete: (id: string) => {
+      logQuery('logistics', 'delete', id);
+      const state = getRaw();
+      state.logistics = state.logistics.filter(l => l.id !== id);
+      saveRaw(state);
     }
   },
   commission: {
