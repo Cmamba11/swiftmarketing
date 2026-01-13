@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Database, Copy, FileCode, Server, Share2, Terminal, Activity, RefreshCw, Layers, Users, PhoneCall, Truck } from 'lucide-react';
-import { prisma } from '../services/db';
+import { Database, Copy, FileCode, Server, Share2, Terminal, Activity, RefreshCw, Layers, Users, PhoneCall, Truck, Shield } from 'lucide-react';
+import { prisma } from '../services/prisma';
 
 const PrismaExplorer: React.FC = () => {
   const [isResetting, setIsResetting] = useState(false);
@@ -10,23 +10,25 @@ const PrismaExplorer: React.FC = () => {
     agents: 0,
     calls: 0,
     logistics: 0,
-    inventory: 0
+    inventory: 0,
+    users: 0
   });
 
   useEffect(() => {
     const updateStats = () => {
       setStats({
-        customers: prisma.customer.findMany().length,
-        agents: prisma.agent.findMany().length,
+        customers: prisma.wholesaler.findMany().length,
+        agents: prisma.salesAgent.findMany().length,
         calls: prisma.callReport.findMany().length,
         logistics: prisma.logistics.findMany().length,
-        inventory: prisma.inventory.findMany().length
+        inventory: prisma.inventory.findMany().length,
+        users: prisma.user.findMany().length
       });
     };
 
     updateStats();
-    window.addEventListener('db-update', updateStats);
-    return () => window.removeEventListener('db-update', updateStats);
+    window.addEventListener('prisma-mutation', updateStats);
+    return () => window.removeEventListener('prisma-mutation', updateStats);
   }, []);
 
   const schema = `// This is your Prisma schema file,
@@ -41,6 +43,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  name      String
+  role      UserRole
+  lastLogin DateTime?
+}
+
 model Wholesaler {
   id              String         @id @default(uuid())
   name            String
@@ -52,8 +62,6 @@ model Wholesaler {
   status          String         @default("Active")
   inventory       Inventory[]
   calls           CallReport[]
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
 }
 
 model SalesAgent {
@@ -61,10 +69,7 @@ model SalesAgent {
   name              String
   role              String
   performanceScore  Int               @default(0)
-  customersAcquired Int               @default(0)
   routes            Wholesaler[]
-  deliveries        LogisticsReport[]
-  commissions       Commission[]
   calls             CallReport[]
 }
 
@@ -75,7 +80,6 @@ model CallReport {
   agent       SalesAgent   @relation(fields: [agentId], references: [id])
   agentId     String
   date        DateTime     @default(now())
-  duration    Int
   outcome     VisitOutcome
   notes       String?      @db.Text
 }
@@ -88,17 +92,13 @@ model Inventory {
   quantity      Int
   unit          String
   status        StockStatus
-  lastRestocked DateTime
 }
 
-model LogisticsReport {
-  id              String     @id @default(uuid())
-  agent           SalesAgent @relation(fields: [agentId], references: [id])
-  agentId         String
-  vehicleId       String
-  fuelUsage       Float
-  distanceCovered Float
-  date            DateTime
+enum UserRole {
+  ADMIN
+  AGENT
+  PRODUCTION
+  LOGISTICS
 }
 
 enum CustomerType {
@@ -128,7 +128,7 @@ enum StockStatus {
   const handleMigration = () => {
     if (confirm("Execute Migration? This will reset all factory data to production defaults.")) {
       setIsResetting(true);
-      localStorage.removeItem('polyflow_db');
+      localStorage.removeItem('swift_plastics_db_v3');
       setTimeout(() => {
         window.location.reload();
       }, 1500);
@@ -149,7 +149,7 @@ enum StockStatus {
           <h2 className="text-4xl font-black mb-4 uppercase tracking-tighter">Prisma Schema Architect</h2>
           <p className="text-slate-400 text-lg max-w-2xl leading-relaxed">
             Real-time link established between UI and Storage. 
-            All factory modules interact via the Type-Safe Prisma Client simulation.
+            The system now includes User Models and Role Definitions.
           </p>
           <div className="flex gap-4 mt-8">
             <button 
@@ -215,9 +215,16 @@ enum StockStatus {
             </div>
             <h4 className="font-bold text-slate-800 mb-6 flex items-center gap-2 relative z-10">
               <Activity size={18} className="text-emerald-500" />
-              Live DB Stats
+              Relational Stats
             </h4>
             <div className="space-y-4 relative z-10">
+              <div className="flex justify-between items-center p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Shield size={14} className="text-swift-red" />
+                  <span className="text-xs font-bold text-slate-600">Users</span>
+                </div>
+                <span className="font-black text-slate-800">{stats.users}</span>
+              </div>
               <div className="flex justify-between items-center p-3 bg-slate-50 rounded-2xl border border-slate-100">
                 <div className="flex items-center gap-2">
                   <Users size={14} className="text-blue-500" />
@@ -257,27 +264,17 @@ enum StockStatus {
             <div className="space-y-2 text-xs font-medium text-slate-500">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-swift-red"></div>
+                User <span className="font-bold text-slate-700">1:1</span> System Profile
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-swift-red"></div>
                 SalesAgent <span className="font-bold text-slate-700">1:N</span> Wholesalers
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-swift-red"></div>
                 Wholesaler <span className="font-bold text-slate-700">1:N</span> Inventory
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-swift-red"></div>
-                Wholesaler <span className="font-bold text-slate-700">1:N</span> CallReports
-              </div>
             </div>
-          </div>
-
-          <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100">
-            <h4 className="font-bold text-emerald-800 mb-2 text-sm flex items-center gap-1.5">
-              <Terminal size={14} />
-              Query Performance
-            </h4>
-            <p className="text-[10px] text-emerald-700 leading-relaxed uppercase font-bold tracking-tight">
-              Optimization enabled: Indices on Wholesaler(email), Agent(id), CallReport(date).
-            </p>
           </div>
         </div>
       </div>

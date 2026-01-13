@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -17,6 +16,8 @@
       body {
         font-family: 'Inter', sans-serif;
         background-color: #f8fafc;
+        margin: 0;
+        padding: 0;
       }
       .bg-swift-red { background-color: var(--swift-red); }
       .bg-swift-navy { background-color: var(--swift-navy); }
@@ -25,27 +26,33 @@
       .border-swift-red { border-color: var(--swift-red); }
       .border-swift-navy { border-color: var(--swift-navy); }
       
-      /* Active state overrides for nav */
       .nav-active {
         background-color: var(--swift-red) !important;
         color: white !important;
         box-shadow: 0 4px 12px rgba(227, 30, 36, 0.2);
       }
+
+      /* Scrollbar styling */
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+      ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
   <script type="importmap">
 {
   "imports": {
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "recharts": "https://esm.sh/recharts@^3.6.0",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "@google/genai": "https://esm.sh/@google/genai@^1.35.0"
+    "lucide-react": "https://esm.sh/lucide-react@^0.475.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.0.0/",
+    "recharts": "https://esm.sh/recharts@^2.15.0",
+    "react/": "https://esm.sh/react@^19.0.0/",
+    "react": "https://esm.sh/react@^19.0.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.3.0"
   }
 }
 </script>
 </head>
   <body>
     <div id="root"></div>
+    <script type="module" src="index.tsx"></script>
   </body>
 </html>

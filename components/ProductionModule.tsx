@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { Package, Search, AlertTriangle, CheckCircle, ArrowRight, History, Bell, X, AlertCircle, Trash2, Edit3, Save, Layers } from 'lucide-react';
 import { Customer, InventoryItem } from '../types';
-import { prisma } from '../services/db';
+import { prisma } from '../services/prisma';
 
 interface ProductionModuleProps {
   customers: Customer[];
@@ -89,7 +88,7 @@ const ProductionModule: React.FC<ProductionModuleProps> = ({ customers, inventor
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
           <div className="p-3 bg-blue-50 text-blue-600 w-fit rounded-xl mb-4"><Layers size={24} /></div>
           <p className="text-slate-500 text-sm font-medium">Factory Inventory Volume</p>
-          <p className="text-2xl font-bold text-slate-800">{totalStockCount} <span className="text-sm font-normal text-slate-400">Total Bales/Rolls</span></p>
+          <p className="text-2xl font-bold text-slate-800">{totalStockCount} <span className="text-sm font-normal text-slate-400">Total Bags/Rolls</span></p>
         </div>
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
           <div className="p-3 bg-emerald-50 text-emerald-600 w-fit rounded-xl mb-4"><Package size={24} /></div>

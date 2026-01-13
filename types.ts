@@ -1,4 +1,19 @@
 
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  AGENT = 'AGENT',
+  PRODUCTION = 'PRODUCTION',
+  LOGISTICS = 'LOGISTICS'
+}
+
+export interface User {
+  id: string;
+  username: string;
+  name: string;
+  role: UserRole;
+  lastLogin?: string;
+}
+
 export enum CustomerType {
   NEW = 'NEW',
   EXISTING = 'EXISTING',
@@ -82,4 +97,4 @@ export interface SystemConfig {
   lastUpdated: string;
 }
 
-export type ViewState = 'DASHBOARD' | 'CUSTOMERS' | 'AGENTS' | 'LOGISTICS' | 'COMMISSIONS' | 'AI_ARCHITECT' | 'PRODUCTION' | 'CALL_REPORTS' | 'PRISMA_SCHEMA';
+export type ViewState = 'DASHBOARD' | 'CUSTOMERS' | 'AGENTS' | 'LOGISTICS' | 'COMMISSIONS' | 'AI_ARCHITECT' | 'PRODUCTION' | 'CALL_REPORTS' | 'PRISMA_SCHEMA' | 'USER_MANAGEMENT';
