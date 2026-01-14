@@ -4,18 +4,16 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   AreaChart, Area, PieChart, Pie, Cell 
 } from 'recharts';
-import { TrendingUp, Users, Target, Fuel, Banknote, Package, Layers } from 'lucide-react';
-import { Customer, Agent, LogisticsReport, Commission, InventoryItem } from '../types';
+import { TrendingUp, Users, Target, Package, Layers } from 'lucide-react';
+import { Customer, Agent, InventoryItem } from '../types';
 
 interface DashboardProps {
   customers: Customer[];
   agents: Agent[];
-  logistics: LogisticsReport[];
-  commissions: Commission[];
   inventory: InventoryItem[];
 }
 
-const DashboardView: React.FC<DashboardProps> = ({ customers, agents, logistics, commissions, inventory }) => {
+const DashboardView: React.FC<DashboardProps> = ({ customers, agents, inventory }) => {
   const rollerCount = inventory.filter(i => i.productName.toLowerCase().includes('roller')).reduce((a, b) => a + b.quantity, 0);
   const bagCount = inventory.filter(i => i.productName.toLowerCase().includes('bag')).reduce((a, b) => a + b.quantity, 0);
 
@@ -25,7 +23,6 @@ const DashboardView: React.FC<DashboardProps> = ({ customers, agents, logistics,
     { name: 'Other Plastics', value: inventory.reduce((a, b) => a + b.quantity, 0) - (rollerCount + bagCount) }
   ].filter(p => p.value > 0);
 
-  // Swift branding colors
   const SWIFT_NAVY = '#1A2B6D';
   const SWIFT_RED = '#E31E24';
   const SWIFT_LIGHT_BLUE = '#3b82f6';
@@ -35,15 +32,13 @@ const DashboardView: React.FC<DashboardProps> = ({ customers, agents, logistics,
     { label: 'Total Wholesalers', value: customers.length, icon: Users, color: 'bg-[#1A2B6D]' },
     { label: 'Active Sales Reps', value: agents.length, icon: Target, color: 'bg-[#E31E24]' },
     { label: 'Monthly Output', value: `${inventory.reduce((a, b) => a + b.quantity, 0)} units`, icon: Layers, color: 'bg-[#1A2B6D]' },
-    { label: 'Fuel Overhead', value: `${logistics.reduce((a, b) => a + b.fuelUsage, 0).toFixed(1)}L`, icon: Fuel, color: 'bg-amber-500' },
   ];
 
   const agentPerfData = agents.map(a => ({ name: a.name, acquisitions: a.customersAcquired }));
 
   return (
     <div className="space-y-8">
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {stats.map((stat, i) => (
           <div key={i} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
             <div className="flex items-center justify-between mb-4">
@@ -59,7 +54,6 @@ const DashboardView: React.FC<DashboardProps> = ({ customers, agents, logistics,
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Production Breakdown */}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
           <h3 className="text-lg font-bold text-swift-navy mb-6 flex items-center gap-2">
             <Package size={20} className="text-swift-red" />
@@ -69,39 +63,18 @@ const DashboardView: React.FC<DashboardProps> = ({ customers, agents, logistics,
             {productBreakdown.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie
-                    data={productBreakdown}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={70}
-                    outerRadius={100}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {productBreakdown.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
+                  <Pie data={productBreakdown} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={5} dataKey="value">
+                    {productBreakdown.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                   </Pie>
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  />
+                  <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center text-slate-400 italic font-medium">No production data available</div>
             )}
           </div>
-          <div className="flex justify-center gap-6 mt-4">
-            {productBreakdown.map((entry, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i] }}></div>
-                <span className="text-xs text-slate-600 font-bold uppercase tracking-wider">{entry.name}</span>
-              </div>
-            ))}
-          </div>
         </div>
 
-        {/* Sales Performance */}
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
           <h3 className="text-lg font-bold text-swift-navy mb-6 flex items-center gap-2">
             <Target size={20} className="text-swift-red" />
@@ -113,43 +86,11 @@ const DashboardView: React.FC<DashboardProps> = ({ customers, agents, logistics,
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600 }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600 }} />
-                <Tooltip 
-                  cursor={{ fill: '#f8fafc' }}
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                />
+                <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
                 <Bar dataKey="acquisitions" fill={SWIFT_NAVY} radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
-      </div>
-
-      {/* Weekly Production Outlook */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-        <h3 className="text-lg font-bold text-swift-navy mb-4 flex items-center gap-2">
-          <TrendingUp size={20} className="text-swift-red" />
-          Production Output Trend (Units)
-        </h3>
-        <div className="h-[200px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={[
-              { day: 'Mon', output: 450 }, { day: 'Tue', output: 520 }, { day: 'Wed', output: 480 },
-              { day: 'Thu', output: 610 }, { day: 'Fri', output: 590 }, { day: 'Sat', output: 200 },
-              { day: 'Sun', output: 50 }
-            ]}>
-              <defs>
-                <linearGradient id="colorOutput" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={SWIFT_RED} stopOpacity={0.1}/>
-                  <stop offset="95%" stopColor={SWIFT_RED} stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 600 }} />
-              <Tooltip 
-                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-              />
-              <Area type="monotone" dataKey="output" stroke={SWIFT_RED} strokeWidth={3} fillOpacity={1} fill="url(#colorOutput)" />
-            </AreaChart>
-          </ResponsiveContainer>
         </div>
       </div>
     </div>

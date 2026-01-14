@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Truck, Fuel, Gauge, Edit2, Trash2, AlertTriangle, Sparkles, Search, MapPin, Plus, X, Check } from 'lucide-react';
 import { LogisticsReport, SystemConfig } from '../types';
@@ -184,9 +183,9 @@ const LogisticsModule: React.FC<LogisticsModuleProps> = ({ reports, config, onEd
                 </td>
                 <td className="px-8 py-6 text-sm font-black text-slate-500">{report.distanceCovered}km</td>
                 <td className="px-8 py-6 text-right">
-                  <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition duration-300">
-                    <button onClick={() => onEdit(report)} className="p-3 hover:bg-white rounded-2xl text-slate-400 hover:text-blue-600 border border-transparent hover:border-slate-200 transition shadow-sm"><Edit2 size={16} /></button>
-                    <button onClick={() => onDelete(report.id)} className="p-3 hover:bg-white rounded-2xl text-slate-400 hover:text-[#E31E24] border border-transparent hover:border-slate-200 transition shadow-sm"><Trash2 size={16} /></button>
+                  <div className="flex justify-end gap-2 transition duration-300">
+                    <button onClick={() => onEdit(report)} className="p-3 bg-white hover:bg-slate-50 rounded-2xl text-slate-400 hover:text-blue-600 border border-slate-200 transition shadow-sm"><Edit2 size={16} /></button>
+                    <button onClick={() => onDelete(report.id)} className="p-3 bg-white hover:bg-red-50 rounded-2xl text-slate-400 hover:text-[#E31E24] border border-slate-200 transition shadow-sm"><Trash2 size={16} /></button>
                   </div>
                 </td>
               </tr>

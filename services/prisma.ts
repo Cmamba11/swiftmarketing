@@ -1,151 +1,183 @@
-import { Customer, Agent, LogisticsReport, Commission, InventoryItem, CustomerType, VisitOutcome, CallReport, User, UserRole } from '../types';
+
+import { Customer, Agent, InventoryItem, CustomerType, VisitOutcome, CallReport, User, Role, SystemConfig, LogisticsReport, Commission } from '../types';
 
 /**
- * NEXT.JS SERVER SIMULATION LAYER
- * This service mimics a backend Prisma client interacting with a relational store.
+ * SWIFT PLASTICS - CORE DATA ENGINE (Simulated Prisma)
+ * Version 6: Removed Safety Clearance Concepts
  */
 
-const DB_KEY = 'swift_plastics_db_v3';
+const DB_KEY = 'swift_plastics_db_v6';
+const CONFIG_KEY = 'swift_plastics_config_v2';
+
+const generateId = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+};
 
 interface DBState {
   users: User[];
+  roles: Role[];
   wholesalers: Customer[];
   agents: Agent[];
-  logistics: LogisticsReport[];
-  commissions: Commission[];
   inventory: InventoryItem[];
   calls: CallReport[];
+  logistics: LogisticsReport[];
+  commissions: Commission[];
 }
 
 const getRaw = (): DBState => {
   const data = localStorage.getItem(DB_KEY);
-  if (!data) return { users: [], wholesalers: [], agents: [], logistics: [], commissions: [], inventory: [], calls: [] };
-  return JSON.parse(data);
+  const fallback: DBState = { users: [], roles: [], wholesalers: [], agents: [], inventory: [], calls: [], logistics: [], commissions: [] };
+  if (!data) return fallback;
+  try {
+    return JSON.parse(data);
+  } catch (e) {
+    return fallback;
+  }
 };
 
-const saveRaw = (data: DBState) => {
+const saveRaw = (data: DBState, silent: boolean = false) => {
   localStorage.setItem(DB_KEY, JSON.stringify(data));
-  window.dispatchEvent(new Event('prisma-mutation'));
-};
-
-const logQuery = (model: string, method: string, args: any) => {
-  const log = `[PRISMA] ${new Date().toLocaleTimeString()} query ${model}.${method}(${JSON.stringify(args)})`;
-  console.debug(log);
-  window.dispatchEvent(new CustomEvent('prisma-log', { detail: log }));
+  if (!silent) {
+    window.dispatchEvent(new CustomEvent('prisma-mutation', { detail: { timestamp: Date.now() } }));
+    window.dispatchEvent(new Event('prisma-mutation'));
+  }
 };
 
 export const prisma = {
-  user: {
-    findMany: () => {
-      logQuery('user', 'findMany', {});
-      return getRaw().users;
+  config: {
+    get: (): SystemConfig => {
+      const data = localStorage.getItem(CONFIG_KEY);
+      if (!data) return {
+        recommendedCommissionRate: 10,
+        targetEfficiencyMetric: 'Lead Generation',
+        customerSegmentationAdvice: [],
+        logisticsThreshold: 0,
+        lastUpdated: new Date().toISOString()
+      };
+      return JSON.parse(data);
     },
-    findUnique: (args: { where: { username: string } }) => {
-      logQuery('user', 'findUnique', args);
-      let state = getRaw();
-      // Auto-seed if empty
-      if (state.users.length === 0) {
-        prisma.seed();
-        state = getRaw();
+    update: (data: Partial<SystemConfig>) => {
+      const current = prisma.config.get();
+      const updated = { ...current, ...data, lastUpdated: new Date().toISOString() };
+      localStorage.setItem(CONFIG_KEY, JSON.stringify(updated));
+      window.dispatchEvent(new Event('prisma-mutation'));
+      return updated;
+    }
+  },
+  role: {
+    findMany: () => getRaw().roles,
+    create: (data: Omit<Role, 'id'>) => {
+      const state = getRaw();
+      const newRole = { ...data, id: generateId() };
+      state.roles.push(newRole);
+      saveRaw(state);
+      return newRole;
+    },
+    delete: (id: string) => {
+      const state = getRaw();
+      if (state.users.some(u => u.roleId === id)) {
+        throw new Error("Cannot delete role assigned to active users.");
       }
-      return state.users.find(u => u.username === args.where.username);
+      state.roles = state.roles.filter(r => r.id !== id);
+      saveRaw(state);
+    }
+  },
+  user: {
+    findMany: () => getRaw().users,
+    findUnique: (args: { where: { username: string } }) => {
+      return getRaw().users.find(u => u.username === args.where.username);
     },
     create: (data: Omit<User, 'id'>) => {
-      logQuery('user', 'create', data);
       const state = getRaw();
-      const newUser = { ...data, id: crypto.randomUUID() };
+      const newUser = { ...data, id: generateId() };
       state.users.push(newUser);
       saveRaw(state);
       return newUser;
     },
     delete: (id: string) => {
-      logQuery('user', 'delete', id);
       const state = getRaw();
       state.users = state.users.filter(u => u.id !== id);
       saveRaw(state);
     }
   },
   wholesaler: {
-    findMany: (args?: { where?: any, include?: any }) => {
-      logQuery('wholesaler', 'findMany', args);
-      return getRaw().wholesalers;
-    },
-    create: (data: Omit<Customer, 'id'>) => {
-      logQuery('wholesaler', 'create', data);
+    findMany: () => getRaw().wholesalers,
+    create: (data: Omit<Customer, 'id' | 'assignedAgentId' | 'productsPitched'>) => {
       const state = getRaw();
-      const newItem = { ...data, id: crypto.randomUUID() };
+      const newItem: Customer = { 
+        ...data, 
+        id: generateId(), 
+        assignedAgentId: '', 
+        productsPitched: [] 
+      };
       state.wholesalers.push(newItem);
       saveRaw(state);
       return newItem;
     },
     delete: (id: string) => {
-      logQuery('wholesaler', 'delete', id);
       const state = getRaw();
       state.wholesalers = state.wholesalers.filter(w => w.id !== id);
       saveRaw(state);
     },
     update: (id: string, data: Partial<Customer>) => {
-      logQuery('wholesaler', 'update', { id, data });
       const state = getRaw();
       state.wholesalers = state.wholesalers.map(w => w.id === id ? { ...w, ...data } : w);
       saveRaw(state);
     }
   },
   salesAgent: {
-    findMany: () => {
-      logQuery('salesAgent', 'findMany', {});
-      return getRaw().agents;
-    },
-    create: (data: any) => {
-      logQuery('salesAgent', 'create', data);
+    findMany: () => getRaw().agents,
+    create: (data: Omit<Agent, 'id' | 'customersAcquired' | 'performanceScore'>) => {
       const state = getRaw();
-      const newItem = { ...data, id: crypto.randomUUID(), customersAcquired: 0, performanceScore: 0 };
+      const newItem: Agent = { 
+        ...data, 
+        id: generateId(), 
+        customersAcquired: 0, 
+        performanceScore: 0 
+      };
       state.agents.push(newItem);
       saveRaw(state);
       return newItem;
     },
+    update: (id: string, data: Partial<Agent>) => {
+      const state = getRaw();
+      state.agents = state.agents.map(a => a.id === id ? { ...a, ...data } : a);
+      saveRaw(state);
+    },
     delete: (id: string) => {
-      logQuery('salesAgent', 'delete', id);
       const state = getRaw();
       state.agents = state.agents.filter(a => a.id !== id);
       saveRaw(state);
     }
   },
   inventory: {
-    findMany: () => {
-      logQuery('inventory', 'findMany', {});
-      return getRaw().inventory;
-    },
-    create: (data: Omit<InventoryItem, 'id' | 'status' | 'lastRestocked'>) => {
-      logQuery('inventory', 'create', data);
+    findMany: () => getRaw().inventory,
+    create: (data: Omit<InventoryItem, 'id' | 'lastRestocked'>) => {
       const state = getRaw();
-      const status = data.quantity > 30 ? 'In Stock' : (data.quantity > 0 ? 'Low Stock' : 'Out of Stock');
       const newItem: InventoryItem = { 
         ...data, 
-        id: crypto.randomUUID(), 
-        status: status as any, 
-        lastRestocked: new Date().toISOString() 
+        id: generateId(), 
+        lastRestocked: new Date().toISOString()
       };
       state.inventory.push(newItem);
       saveRaw(state);
       return newItem;
     },
     delete: (id: string) => {
-      logQuery('inventory', 'delete', id);
       const state = getRaw();
       state.inventory = state.inventory.filter(i => i.id !== id);
       saveRaw(state);
     },
     increment: (id: string, amount: number) => {
-      logQuery('inventory', 'update/increment', { id, amount });
       const state = getRaw();
       state.inventory = state.inventory.map(i => {
         if (i.id === id) {
-          const newQty = i.quantity + amount;
           return { 
             ...i, 
-            quantity: newQty, 
-            status: newQty > 30 ? 'In Stock' : (newQty > 0 ? 'Low Stock' : 'Out of Stock'),
+            quantity: i.quantity + amount, 
             lastRestocked: new Date().toISOString()
           };
         }
@@ -153,100 +185,63 @@ export const prisma = {
       });
       saveRaw(state);
     },
-    update: (id: string, data: { quantity: number }) => {
-      logQuery('inventory', 'update', { id, data });
+    update: (id: string, data: Partial<InventoryItem>) => {
       const state = getRaw();
-      state.inventory = state.inventory.map(i => {
-        if (i.id === id) {
-          return { 
-            ...i, 
-            quantity: data.quantity,
-            status: data.quantity > 30 ? 'In Stock' : (data.quantity > 0 ? 'Low Stock' : 'Out of Stock')
-          };
-        }
-        return i;
-      });
+      state.inventory = state.inventory.map(i => i.id === id ? { ...i, ...data } : i);
       saveRaw(state);
     }
   },
   callReport: {
-    findMany: () => {
-      logQuery('callReport', 'findMany', {});
-      return getRaw().calls;
-    },
+    findMany: () => getRaw().calls,
     create: (data: any) => {
-      logQuery('callReport', 'create', data);
       const state = getRaw();
-      const newItem = { ...data, id: crypto.randomUUID() };
+      const newItem = { ...data, id: generateId() };
       state.calls.push(newItem);
       saveRaw(state);
       return newItem;
     },
     delete: (id: string) => {
-      logQuery('callReport', 'delete', id);
       const state = getRaw();
       state.calls = state.calls.filter(c => c.id !== id);
       saveRaw(state);
     }
   },
   logistics: {
-    findMany: () => {
-      logQuery('logistics', 'findMany', {});
-      return getRaw().logistics;
-    },
+    findMany: () => getRaw().logistics,
     create: (data: any) => {
-      logQuery('logistics', 'create', data);
       const state = getRaw();
-      const newItem = { ...data, id: crypto.randomUUID(), date: new Date().toISOString() };
+      const newItem = { ...data, id: generateId(), date: new Date().toISOString() };
       state.logistics.push(newItem);
       saveRaw(state);
       return newItem;
     },
     delete: (id: string) => {
-      logQuery('logistics', 'delete', id);
       const state = getRaw();
       state.logistics = state.logistics.filter(l => l.id !== id);
       saveRaw(state);
     }
   },
   commission: {
-    findMany: () => {
-      logQuery('commission', 'findMany', {});
-      return getRaw().commissions;
-    },
-    updateMany: (args: { where: { status: string }, data: { status: string } }) => {
-      logQuery('commission', 'updateMany', args);
+    findMany: () => getRaw().commissions,
+    processBatchCommissions: () => {
       const state = getRaw();
-      state.commissions = state.commissions.map(c => 
-        c.status === args.where.status ? { ...c, status: args.data.status as any } : c
-      );
+      state.commissions = state.commissions.map(c => ({ ...c, status: 'Paid' as const }));
       saveRaw(state);
     }
   },
   seed: () => {
     const state = getRaw();
-    if (state.users.length === 0) {
+    if (state.roles.length === 0) {
       saveRaw({
-        users: [
-          { id: 'u1', username: 'admin', name: 'Swift Admin', role: UserRole.ADMIN },
-          { id: 'u2', username: 'agent1', name: 'Sarah Miller', role: UserRole.AGENT },
-          { id: 'u3', username: 'factory', name: 'Production Head', role: UserRole.PRODUCTION }
-        ],
-        agents: [
-          { id: 'a1', name: 'Sarah Miller', role: 'Regional Sales Head', performanceScore: 92, customersAcquired: 145 },
-          { id: 'a2', name: 'James Wilson', role: 'Industrial Account Rep', performanceScore: 78, customersAcquired: 32 }
-        ],
-        wholesalers: [
-          { id: '1', name: 'Metro Retail Wholesalers', type: CustomerType.EXISTING, email: 'procurement@metroretail.com', location: 'Industrial Zone A', assignedAgentId: 'a1', productsPitched: [], status: 'Active Account' }
-        ],
-        inventory: [
-          { id: 'inv1', customerId: '1', productName: 'HDPE Heavy Duty Rollers', quantity: 120, unit: 'rolls', status: 'In Stock', lastRestocked: '2023-10-20' },
-          { id: 'inv2', customerId: '1', productName: 'Medium Packing Bags', quantity: 45, unit: 'Bags', status: 'In Stock', lastRestocked: '2023-10-22' }
-        ],
-        commissions: [],
+        users: [],
+        roles: [],
+        wholesalers: [],
+        agents: [],
+        inventory: [],
+        calls: [],
         logistics: [],
-        calls: []
-      });
+        commissions: []
+      }, true);
     }
   }
 };

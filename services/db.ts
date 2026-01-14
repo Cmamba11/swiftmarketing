@@ -21,12 +21,9 @@ export const db = {
   updateConfig: (updates: any) => {
     console.debug('Config updated locally', updates);
   },
-  // Fix: Implemented processBatchCommissions to handle batch updates as expected by CommissionModule
+  // Fix: Corrected processBatchCommissions to call the existing method in prisma.ts
   processBatchCommissions: () => {
-    prisma.commission.updateMany({
-      where: { status: 'Pending' },
-      data: { status: 'Paid' }
-    });
+    prisma.commission.processBatchCommissions();
   }
 };
 

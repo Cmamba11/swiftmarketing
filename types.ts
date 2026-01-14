@@ -1,16 +1,26 @@
 
-export enum UserRole {
-  ADMIN = 'ADMIN',
-  AGENT = 'AGENT',
-  PRODUCTION = 'PRODUCTION',
-  LOGISTICS = 'LOGISTICS'
+export interface Role {
+  id: string;
+  name: string;
+  description: string;
+  isSystemAdmin: boolean;
+  // Module Permissions
+  canManageInventory: boolean;
+  canManageWholesalers: boolean;
+  canManageAgents: boolean;
+  canManageCalls: boolean;
+  canAccessAI: boolean;
+  // Action Permissions (Granular Control)
+  canCreate: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
 }
 
 export interface User {
   id: string;
   username: string;
   name: string;
-  role: UserRole;
+  roleId: string; // References Role.id
   lastLogin?: string;
 }
 
@@ -32,18 +42,34 @@ export interface Customer {
   name: string;
   type: CustomerType;
   email: string;
+  phone: string;
+  contactPerson: string;
   location: string;
+  address: string;
   assignedAgentId: string;
   productsPitched: string[];
   status: string;
+  // Enhanced Info
+  taxId: string;
+  businessCategory: string;
+  creditLimit: number;
+  website?: string;
 }
 
 export interface Agent {
   id: string;
   name: string;
+  email: string;
+  phone: string;
+  region: string;
   role: string;
   performanceScore: number;
   customersAcquired: number;
+  // Enhanced Info
+  employeeId: string;
+  hireDate: string;
+  emergencyContact: string;
+  baseSalary: number;
 }
 
 export interface CallReport {
@@ -51,7 +77,7 @@ export interface CallReport {
   customerId: string;
   agentId: string;
   date: string;
-  duration: number; // in minutes
+  duration: number; // Talk Time in minutes
   outcome: VisitOutcome;
   notes: string;
 }
@@ -65,18 +91,13 @@ export interface LogisticsReport {
   date: string;
 }
 
-export interface CommissionBreakdown {
-  label: string;
-  amount: number;
-}
-
 export interface Commission {
   id: string;
   agentId: string;
   amount: number;
-  status: 'Pending' | 'Paid';
   date: string;
-  breakdown?: CommissionBreakdown[];
+  status: 'Pending' | 'Paid';
+  breakdown?: { label: string; amount: number }[];
 }
 
 export interface InventoryItem {
@@ -85,7 +106,6 @@ export interface InventoryItem {
   productName: string;
   quantity: number;
   unit: string;
-  status: 'In Stock' | 'Low Stock' | 'Out of Stock';
   lastRestocked: string;
 }
 
@@ -97,4 +117,4 @@ export interface SystemConfig {
   lastUpdated: string;
 }
 
-export type ViewState = 'DASHBOARD' | 'CUSTOMERS' | 'AGENTS' | 'LOGISTICS' | 'COMMISSIONS' | 'AI_ARCHITECT' | 'PRODUCTION' | 'CALL_REPORTS' | 'PRISMA_SCHEMA' | 'USER_MANAGEMENT';
+export type ViewState = 'DASHBOARD' | 'CUSTOMERS' | 'AGENTS' | 'AI_ARCHITECT' | 'PRODUCTION' | 'CALL_REPORTS' | 'PRISMA_SCHEMA' | 'USER_MANAGEMENT' | 'ROLE_MANAGEMENT';
