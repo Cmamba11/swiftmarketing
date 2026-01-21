@@ -1,38 +1,40 @@
 
-import { Customer, Agent, InventoryItem, CustomerType, VisitOutcome, CallReport, User, Role, SystemConfig, LogisticsReport, Commission } from '../types';
+import { Partner, Agent, InventoryItem, PartnerType, VisitOutcome, CallReport, User, Role, SystemConfig, LogisticsReport, Commission, Order, OrderItem } from '../types';
 
 /**
  * SWIFT PLASTICS - CORE DATA ENGINE (Simulated Prisma)
- * Version 6: Removed Safety Clearance Concepts
+ * Version 9: Enhanced Multi-item Fulfillment & KG Tracking
  */
 
-const DB_KEY = 'swift_plastics_db_v6';
+const DB_KEY = 'swift_plastics_db_v9';
 const CONFIG_KEY = 'swift_plastics_config_v2';
 
 const generateId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
   }
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  return Math.random().toString(36).substring(2, 15);
 };
 
 interface DBState {
   users: User[];
   roles: Role[];
-  wholesalers: Customer[];
+  partners: Partner[];
   agents: Agent[];
   inventory: InventoryItem[];
   calls: CallReport[];
+  orders: Order[];
   logistics: LogisticsReport[];
   commissions: Commission[];
 }
 
 const getRaw = (): DBState => {
   const data = localStorage.getItem(DB_KEY);
-  const fallback: DBState = { users: [], roles: [], wholesalers: [], agents: [], inventory: [], calls: [], logistics: [], commissions: [] };
+  const fallback: DBState = { users: [], roles: [], partners: [], agents: [], inventory: [], calls: [], orders: [], logistics: [], commissions: [] };
   if (!data) return fallback;
   try {
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    return { ...fallback, ...parsed };
   } catch (e) {
     return fallback;
   }
@@ -52,7 +54,7 @@ export const prisma = {
       const data = localStorage.getItem(CONFIG_KEY);
       if (!data) return {
         recommendedCommissionRate: 10,
-        targetEfficiencyMetric: 'Lead Generation',
+        targetEfficiencyMetric: 'Order Fulfillment',
         customerSegmentationAdvice: [],
         logisticsThreshold: 0,
         lastUpdated: new Date().toISOString()
@@ -78,9 +80,7 @@ export const prisma = {
     },
     delete: (id: string) => {
       const state = getRaw();
-      if (state.users.some(u => u.roleId === id)) {
-        throw new Error("Cannot delete role assigned to active users.");
-      }
+      if (state.users.some(u => u.roleId === id)) throw new Error("Role in use.");
       state.roles = state.roles.filter(r => r.id !== id);
       saveRaw(state);
     }
@@ -103,49 +103,40 @@ export const prisma = {
       saveRaw(state);
     }
   },
-  wholesaler: {
-    findMany: () => getRaw().wholesalers,
-    create: (data: Omit<Customer, 'id' | 'assignedAgentId' | 'productsPitched'>) => {
+  partner: {
+    findMany: () => getRaw().partners,
+    create: (data: Omit<Partner, 'id' | 'assignedAgentId'>) => {
       const state = getRaw();
-      const newItem: Customer = { 
-        ...data, 
-        id: generateId(), 
-        assignedAgentId: '', 
-        productsPitched: [] 
-      };
-      state.wholesalers.push(newItem);
+      const newItem: Partner = { ...data, id: generateId(), assignedAgentId: '' };
+      state.partners.push(newItem);
       saveRaw(state);
       return newItem;
     },
     delete: (id: string) => {
       const state = getRaw();
-      state.wholesalers = state.wholesalers.filter(w => w.id !== id);
+      state.partners = state.partners.filter(p => p.id !== id);
       saveRaw(state);
     },
-    update: (id: string, data: Partial<Customer>) => {
+    update: (id: string, data: Partial<Partner>) => {
       const state = getRaw();
-      state.wholesalers = state.wholesalers.map(w => w.id === id ? { ...w, ...data } : w);
+      state.partners = state.partners.map(p => p.id === id ? { ...p, ...data } : p);
       saveRaw(state);
     }
+  },
+  wholesaler: {
+    findMany: () => prisma.partner.findMany(),
+    create: (data: Omit<Partner, 'id' | 'assignedAgentId'>) => prisma.partner.create(data),
+    delete: (id: string) => prisma.partner.delete(id),
+    update: (id: string, data: Partial<Partner>) => prisma.partner.update(id, data)
   },
   salesAgent: {
     findMany: () => getRaw().agents,
     create: (data: Omit<Agent, 'id' | 'customersAcquired' | 'performanceScore'>) => {
       const state = getRaw();
-      const newItem: Agent = { 
-        ...data, 
-        id: generateId(), 
-        customersAcquired: 0, 
-        performanceScore: 0 
-      };
+      const newItem: Agent = { ...data, id: generateId(), customersAcquired: 0, performanceScore: 0 };
       state.agents.push(newItem);
       saveRaw(state);
       return newItem;
-    },
-    update: (id: string, data: Partial<Agent>) => {
-      const state = getRaw();
-      state.agents = state.agents.map(a => a.id === id ? { ...a, ...data } : a);
-      saveRaw(state);
     },
     delete: (id: string) => {
       const state = getRaw();
@@ -153,15 +144,42 @@ export const prisma = {
       saveRaw(state);
     }
   },
+  order: {
+    findMany: () => getRaw().orders,
+    create: (data: Omit<Order, 'id' | 'status'>) => {
+      const state = getRaw();
+      const newOrder: Order = { ...data, id: generateId(), status: 'PENDING' };
+      
+      let allFound = true;
+      newOrder.items.forEach(item => {
+        // Find inventory matching product type and ownership (Partner vs Factory)
+        const inv = state.inventory.find(invItem => 
+          invItem.productType === item.productType && 
+          (item.productType === 'PACKING_BAG' ? invItem.partnerId === null : invItem.partnerId === newOrder.partnerId)
+        );
+
+        if (inv) {
+          inv.quantity -= item.quantity;
+          if (item.totalKg && inv.totalKg !== undefined) {
+            inv.totalKg -= item.totalKg;
+          }
+        } else {
+          allFound = false;
+        }
+      });
+
+      if (allFound) newOrder.status = 'FULFILLED';
+      
+      state.orders.push(newOrder);
+      saveRaw(state);
+      return newOrder;
+    }
+  },
   inventory: {
     findMany: () => getRaw().inventory,
     create: (data: Omit<InventoryItem, 'id' | 'lastRestocked'>) => {
       const state = getRaw();
-      const newItem: InventoryItem = { 
-        ...data, 
-        id: generateId(), 
-        lastRestocked: new Date().toISOString()
-      };
+      const newItem: InventoryItem = { ...data, id: generateId(), lastRestocked: new Date().toISOString() };
       state.inventory.push(newItem);
       saveRaw(state);
       return newItem;
@@ -173,21 +191,7 @@ export const prisma = {
     },
     increment: (id: string, amount: number) => {
       const state = getRaw();
-      state.inventory = state.inventory.map(i => {
-        if (i.id === id) {
-          return { 
-            ...i, 
-            quantity: i.quantity + amount, 
-            lastRestocked: new Date().toISOString()
-          };
-        }
-        return i;
-      });
-      saveRaw(state);
-    },
-    update: (id: string, data: Partial<InventoryItem>) => {
-      const state = getRaw();
-      state.inventory = state.inventory.map(i => i.id === id ? { ...i, ...data } : i);
+      state.inventory = state.inventory.map(i => i.id === id ? { ...i, quantity: i.quantity + amount, lastRestocked: new Date().toISOString() } : i);
       saveRaw(state);
     }
   },
@@ -199,18 +203,13 @@ export const prisma = {
       state.calls.push(newItem);
       saveRaw(state);
       return newItem;
-    },
-    delete: (id: string) => {
-      const state = getRaw();
-      state.calls = state.calls.filter(c => c.id !== id);
-      saveRaw(state);
     }
   },
   logistics: {
     findMany: () => getRaw().logistics,
-    create: (data: any) => {
+    create: (data: Omit<LogisticsReport, 'id'>) => {
       const state = getRaw();
-      const newItem = { ...data, id: generateId(), date: new Date().toISOString() };
+      const newItem = { ...data, id: generateId() };
       state.logistics.push(newItem);
       saveRaw(state);
       return newItem;
@@ -225,7 +224,19 @@ export const prisma = {
     findMany: () => getRaw().commissions,
     processBatchCommissions: () => {
       const state = getRaw();
-      state.commissions = state.commissions.map(c => ({ ...c, status: 'Paid' as const }));
+      state.commissions = state.commissions.map(c => ({ ...c, status: 'Paid' as 'Paid' }));
+      saveRaw(state);
+    },
+    create: (data: Omit<Commission, 'id'>) => {
+      const state = getRaw();
+      const newItem = { ...data, id: generateId() };
+      state.commissions.push(newItem);
+      saveRaw(state);
+      return newItem;
+    },
+    delete: (id: string) => {
+      const state = getRaw();
+      state.commissions = state.commissions.filter(c => c.id !== id);
       saveRaw(state);
     }
   },
@@ -235,10 +246,11 @@ export const prisma = {
       saveRaw({
         users: [],
         roles: [],
-        wholesalers: [],
+        partners: [],
         agents: [],
         inventory: [],
         calls: [],
+        orders: [],
         logistics: [],
         commissions: []
       }, true);
