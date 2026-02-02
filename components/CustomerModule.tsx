@@ -1,12 +1,14 @@
 
 import React, { useState } from 'react';
 import { Search, Edit2, Trash2, MapPin, Building2, Plus, X, Globe, FileText, Wallet } from 'lucide-react';
-import { Customer, CustomerType, Role, PartnerType } from '../types';
+// Fix: Import Partner and PartnerType instead of Customer and CustomerType
+import { Partner, Role, PartnerType } from '../types';
 import { prisma } from '../services/prisma';
 
 interface CustomerModuleProps {
-  customers: Customer[];
-  onEdit: (customer: Customer) => void;
+  // Fix: Use Partner instead of Customer
+  customers: Partner[];
+  onEdit: (customer: Partner) => void;
   onDelete: (id: string) => void;
   searchTerm: string;
   onSearchChange: (val: string) => void;
@@ -17,30 +19,32 @@ const CustomerModule: React.FC<CustomerModuleProps> = ({ customers, onEdit, onDe
   const [showAdd, setShowAdd] = useState(false);
   const [formData, setFormData] = useState({
     name: '', email: '', phone: '', contactPerson: '', location: '', address: '',
-    // Fix: Use PartnerType enum directly as CustomerType is just a type alias
     type: PartnerType.NEW, status: 'Active Account',
-    taxId: '', businessCategory: 'Distributor', creditLimit: 5000, website: ''
+    // Fix: Added missing assignedAgentId to match Partner interface
+    assignedAgentId: '',
+    businessCategory: 'Distributor', website: ''
   });
 
-  const canCreate = permissions?.isSystemAdmin || permissions?.canCreate;
-  const canDelete = permissions?.isSystemAdmin || permissions?.canDelete;
+  // Fix: Correct permission keys to match Role interface
+  const canCreate = permissions?.isSystemAdmin || permissions?.canCreatePartners;
+  const canDelete = permissions?.isSystemAdmin || permissions?.canDeletePartners;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    prisma.wholesaler.create({ ...formData });
+    // Fix: Use prisma.partner instead of prisma.wholesaler
+    prisma.partner.create({ ...formData });
     setFormData({ 
       name: '', email: '', phone: '', contactPerson: '', location: '', address: '', 
-      // Fix: Use PartnerType enum directly as CustomerType is just a type alias
       type: PartnerType.NEW, status: 'Active Account',
-      taxId: '', businessCategory: 'Distributor', creditLimit: 5000, website: ''
+      assignedAgentId: '',
+      businessCategory: 'Distributor', website: ''
     });
     setShowAdd(false);
   };
 
   const filteredCustomers = customers.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.taxId.toLowerCase().includes(searchTerm.toLowerCase())
+    c.location.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -48,7 +52,7 @@ const CustomerModule: React.FC<CustomerModuleProps> = ({ customers, onEdit, onDe
       <div className="bg-white p-5 rounded-3xl border border-slate-200 flex flex-col md:flex-row gap-4 items-center justify-between shadow-sm">
         <div className="relative w-full md:w-96">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input type="text" placeholder="Search by name or TIN..." value={searchTerm} onChange={(e) => onSearchChange(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-swift-red outline-none transition font-bold" />
+          <input type="text" placeholder="Search by name..." value={searchTerm} onChange={(e) => onSearchChange(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-swift-red outline-none transition font-bold" />
         </div>
         {canCreate && (
           <button onClick={() => setShowAdd(!showAdd)} className="flex items-center justify-center gap-2 px-8 py-3 bg-swift-navy text-white rounded-xl font-black uppercase tracking-widest hover:bg-swift-red transition shadow-lg active:scale-95">
@@ -79,20 +83,12 @@ const CustomerModule: React.FC<CustomerModuleProps> = ({ customers, onEdit, onDe
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tax ID (TIN)</label>
-                <input type="text" value={formData.taxId} onChange={e => setFormData({...formData, taxId: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold" placeholder="TIN-000-X" required />
-              </div>
-              <div className="space-y-1">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Contact Head</label>
                 <input type="text" value={formData.contactPerson} onChange={e => setFormData({...formData, contactPerson: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold" placeholder="Manager Name" required />
               </div>
               <div className="space-y-1">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Phone</label>
                 <input type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold" placeholder="+234..." required />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Credit Limit ($)</label>
-                <input type="number" value={formData.creditLimit} onChange={e => setFormData({...formData, creditLimit: Number(e.target.value)})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold" required />
               </div>
               <div className="space-y-1">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Website</label>
@@ -124,17 +120,6 @@ const CustomerModule: React.FC<CustomerModuleProps> = ({ customers, onEdit, onDe
               </span>
             </div>
             
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
-                <FileText size={14} className="text-swift-red" />
-                <span className="text-[10px] font-black uppercase text-slate-400">TIN:</span> {customer.taxId}
-              </div>
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
-                <Wallet size={14} className="text-swift-red" />
-                <span className="text-[10px] font-black uppercase text-slate-400">Limit:</span> ${customer.creditLimit.toLocaleString()}
-              </div>
-            </div>
-
             <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-6">
               <div className="flex gap-4">
                 {customer.website && (

@@ -1,4 +1,5 @@
 
+
 export interface Role {
   id: string;
   name: string;
@@ -18,6 +19,7 @@ export interface Role {
   canDeleteAgents: boolean;
 
   // Order Permissions
+  // Fixed duplicate identifier 'canViewOrders'
   canViewOrders: boolean;
   canCreateOrders: boolean;
   canEditOrders: boolean;
@@ -48,6 +50,7 @@ export interface User {
   name: string;
   roleId: string;
   lastLogin?: string;
+  agentId?: string; // Links a user to their specific Sales Agent profile
 }
 
 export enum PartnerType {
@@ -72,16 +75,12 @@ export interface Partner {
   contactPerson: string;
   location: string;
   address: string;
-  assignedAgentId: string;
+  assignedAgentId: string; // Known as "Account Officer"
   status: string;
-  taxId: string;
   businessCategory: string;
-  creditLimit: number;
   website?: string;
+  defaultRatePerKg?: number; // Added to store partner-specific pricing
 }
-
-export type Customer = Partner;
-export type CustomerType = PartnerType;
 
 export interface Agent {
   id: string;
@@ -96,6 +95,23 @@ export interface Agent {
   hireDate: string;
   emergencyContact: string;
   baseSalary: number;
+  weeklyTarget: number;
+  monthlyTarget: number;
+  // New KPI Specific Fields
+  dataAccuracyScore: number; // 0-100%
+  timelinessScore: number; // 0-100%
+}
+
+export interface Sale {
+  id: string;
+  orderId: string;
+  agentId: string;
+  partnerId: string;
+  inventoryItemId: string; 
+  quantity: number;
+  unitPrice: number; // For value calculation
+  date: string;
+  notes: string;
 }
 
 export interface CallReport {
@@ -105,15 +121,19 @@ export interface CallReport {
   date: string;
   duration: number;
   outcome: VisitOutcome;
+  summary: string; // Added for brief discussion overview
   notes: string;
+  orderId?: string;
 }
 
 export interface OrderItem {
   id: string;
   productName: string;
   productType: 'ROLLER' | 'PACKING_BAG';
-  quantity: number;
-  totalKg?: number;
+  quantity: number; 
+  totalKg?: number; 
+  ratePerKg?: number; // Specific rate used for this order item
+  fulfilledQuantity: number; 
 }
 
 export interface Order {
@@ -123,6 +143,7 @@ export interface Order {
   orderDate: string;
   status: 'PENDING' | 'FULFILLED' | 'CANCELLED';
   totalValue: number;
+  internalId: string;
 }
 
 export interface InventoryItem {
@@ -134,6 +155,17 @@ export interface InventoryItem {
   totalKg?: number;
   unit: string;
   lastRestocked: string;
+}
+
+export interface InventoryLog {
+  id: string;
+  inventoryItemId: string;
+  type: 'INITIAL_STOCK' | 'RESTOCK' | 'ADJUSTMENT' | 'SALE' | 'REDUCTION';
+  change: number;
+  finalQuantity: number;
+  timestamp: string;
+  userName: string;
+  notes?: string;
 }
 
 export interface LogisticsReport {
@@ -161,4 +193,4 @@ export interface SystemConfig {
   lastUpdated: string;
 }
 
-export type ViewState = 'DASHBOARD' | 'PARTNERS' | 'AGENTS' | 'ORDERS' | 'PRODUCTION' | 'CALL_REPORTS' | 'PRISMA_SCHEMA' | 'USER_MANAGEMENT' | 'ROLE_MANAGEMENT';
+export type ViewState = 'DASHBOARD' | 'PARTNERS' | 'AGENTS' | 'ORDERS' | 'SALES' | 'PRODUCTION' | 'CALL_REPORTS' | 'PORTFOLIO' | 'PRISMA_SCHEMA' | 'USER_MANAGEMENT' | 'ROLE_MANAGEMENT';

@@ -4,10 +4,12 @@ import { prisma } from './prisma';
 
 export const db = {
   get: () => ({
-    customers: prisma.wholesaler.findMany(),
+    // Fix: Using prisma.partner instead of prisma.wholesaler
+    customers: prisma.partner.findMany(),
     agents: prisma.salesAgent.findMany(),
     inventory: prisma.inventory.findMany(),
     callReports: prisma.callReport.findMany(),
+    // Fix: Corrected property names to match prisma export
     commissions: prisma.commission.findMany(),
     logistics: prisma.logistics.findMany(),
     config: {

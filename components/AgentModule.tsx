@@ -20,7 +20,10 @@ const AgentModule: React.FC<AgentModuleProps> = ({ agents, onEdit, onDelete, onA
   const [formData, setFormData] = useState({ 
     name: '', email: '', phone: '', region: '', role: 'Wholesale Liaison',
     employeeId: '', hireDate: new Date().toISOString().split('T')[0],
-    emergencyContact: '', baseSalary: 3000
+    emergencyContact: '', baseSalary: 3000,
+    // Fix: Added missing weeklyTarget and monthlyTarget to satisfy Omit<Agent, ...>
+    weeklyTarget: 500,
+    monthlyTarget: 2000
   });
 
   const canCreate = permissions?.isSystemAdmin || permissions?.canCreateAgents;
@@ -32,7 +35,9 @@ const AgentModule: React.FC<AgentModuleProps> = ({ agents, onEdit, onDelete, onA
     setFormData({ 
       name: '', email: '', phone: '', region: '', role: 'Wholesale Liaison',
       employeeId: '', hireDate: new Date().toISOString().split('T')[0],
-      emergencyContact: '', baseSalary: 3000
+      emergencyContact: '', baseSalary: 3000,
+      weeklyTarget: 500,
+      monthlyTarget: 2000
     });
     setShowAdd(false);
   };

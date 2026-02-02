@@ -9,7 +9,8 @@ const PrismaExplorer: React.FC = () => {
   useEffect(() => {
     const updateStats = () => {
       setStats({
-        customers: prisma.wholesaler.findMany().length,
+        // Fix: Use prisma.partner instead of prisma.wholesaler
+        customers: prisma.partner.findMany().length,
         agents: prisma.salesAgent.findMany().length,
         calls: prisma.callReport.findMany().length,
         inventory: prisma.inventory.findMany().length,
@@ -38,7 +39,7 @@ model User {
   role      Role     @relation(fields: [roleId], references: [id])
 }
 
-model Wholesaler {
+model Partner {
   id            String       @id @default(uuid())
   name          String
   email         String
@@ -47,6 +48,9 @@ model Wholesaler {
   location      String
   address       String
   type          CustomerType
+  assignedAgentId String
+  status        String
+  businessCategory String
 }
 
 model SalesAgent {

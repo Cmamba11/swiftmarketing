@@ -1,12 +1,12 @@
 
 import React, { useState } from 'react';
 import { Phone, Calendar, Clock, MessageSquare, Edit2, Trash2, Search, Filter, PhoneCall, TrendingUp, CheckCircle2, ChevronDown, ChevronUp, Save, Send, User } from 'lucide-react';
-import { CallReport, Customer, Agent, VisitOutcome, Role } from '../types';
+import { CallReport, Partner, Agent, VisitOutcome, Role } from '../types';
 import { prisma } from '../services/prisma';
 
 interface CallReportModuleProps {
   reports: CallReport[];
-  customers: Customer[];
+  customers: Partner[];
   agents: Agent[];
   onEdit: (report: CallReport) => void;
   onDelete: (id: string) => void;
@@ -17,9 +17,9 @@ interface CallReportModuleProps {
 
 const CallReportModule: React.FC<CallReportModuleProps> = ({ reports, customers, agents, onEdit, onDelete, searchTerm, onSearchChange, permissions }) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [quickLog, setQuickLog] = useState({ customerId: '', agentId: '', outcome: VisitOutcome.FOLLOW_UP, notes: '', talkTime: 5 });
+  const [quickLog, setQuickLog] = useState({ customerId: '', agentId: '', outcome: VisitOutcome.FOLLOW_UP, summary: '', notes: '', talkTime: 5 });
 
-  const canManage = permissions?.isSystemAdmin || permissions?.canManageCalls;
+  const canManage = permissions?.isSystemAdmin || permissions?.canEditCalls;
 
   const getCustomerName = (id: string) => customers.find(c => c.id === id)?.name || 'Unknown Customer';
   const getAgentName = (id: string) => agents.find(a => a.id === id)?.name || 'Unknown Agent';
@@ -31,7 +31,7 @@ const CallReportModule: React.FC<CallReportModuleProps> = ({ reports, customers,
 
   const handleQuickLogSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quickLog.customerId || !quickLog.agentId || !quickLog.notes) return;
+    if (!quickLog.customerId || !quickLog.agentId || !quickLog.notes || !quickLog.summary) return;
     
     prisma.callReport.create({
       customerId: quickLog.customerId,
@@ -39,10 +39,11 @@ const CallReportModule: React.FC<CallReportModuleProps> = ({ reports, customers,
       date: new Date().toISOString(),
       duration: Number(quickLog.talkTime),
       outcome: quickLog.outcome,
+      summary: quickLog.summary,
       notes: quickLog.notes
     });
 
-    setQuickLog({ customerId: '', agentId: '', outcome: VisitOutcome.FOLLOW_UP, notes: '', talkTime: 5 });
+    setQuickLog({ customerId: '', agentId: '', outcome: VisitOutcome.FOLLOW_UP, summary: '', notes: '', talkTime: 5 });
   };
 
   return (
@@ -59,7 +60,7 @@ const CallReportModule: React.FC<CallReportModuleProps> = ({ reports, customers,
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Dispatch Log</span>
           </div>
           <form onSubmit={handleQuickLogSubmit} className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-4">
               <div className="space-y-1">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Wholesaler</label>
                 <select value={quickLog.customerId} onChange={(e) => setQuickLog({...quickLog, customerId: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-swift-red text-sm font-medium" required>
@@ -74,24 +75,37 @@ const CallReportModule: React.FC<CallReportModuleProps> = ({ reports, customers,
                   {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>
               </div>
+              <div className="space-y-1 lg:col-span-2">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Brief Discussion (Subject)</label>
+                <input type="text" value={quickLog.summary} onChange={(e) => setQuickLog({...quickLog, summary: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-swift-red text-sm font-medium" placeholder="E.g. Price inquiry for industrial bags" required />
+              </div>
               <div className="space-y-1">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Talk Time (Mins)</label>
                 <input type="number" value={quickLog.talkTime} onChange={(e) => setQuickLog({...quickLog, talkTime: Number(e.target.value)})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-swift-red text-sm font-medium" min="1" required />
               </div>
-              <div className="space-y-1">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Outcome</label>
-                <select value={quickLog.outcome} onChange={(e) => setQuickLog({...quickLog, outcome: e.target.value as VisitOutcome})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-swift-red text-sm font-medium">
-                  {Object.values(VisitOutcome).map(v => <option key={v} value={v}>{v.replace('_', ' ')}</option>)}
-                </select>
-              </div>
               <div className="flex items-end">
-                <button type="submit" disabled={!quickLog.customerId || !quickLog.agentId || !quickLog.notes} className="w-full h-[46px] bg-swift-navy text-white rounded-xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:bg-swift-red transition shadow-lg active:scale-95 disabled:opacity-50">
+                <button type="submit" disabled={!quickLog.customerId || !quickLog.agentId || !quickLog.notes || !quickLog.summary} className="w-full h-[46px] bg-swift-navy text-white rounded-xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:bg-swift-red transition shadow-lg active:scale-95 disabled:opacity-50">
                   <Send size={16} />
                   Commit Record
                 </button>
               </div>
             </div>
-            <textarea placeholder="Discuss specific SKUs pitched, price objections, or re-stocking requests..." value={quickLog.notes} onChange={(e) => setQuickLog({...quickLog, notes: e.target.value})} className="w-full h-24 p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-swift-red resize-none text-sm font-medium" required></textarea>
+            <div className="space-y-1">
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Interaction Notes (Transcript)</label>
+              <textarea placeholder="Discuss specific SKUs pitched, price objections, or re-stocking requests..." value={quickLog.notes} onChange={(e) => setQuickLog({...quickLog, notes: e.target.value})} className="w-full h-24 p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-swift-red resize-none text-sm font-medium" required></textarea>
+            </div>
+            <div className="mt-4">
+              <div className="space-y-1">
+                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Outcome</label>
+                 <div className="flex flex-wrap gap-2">
+                    {Object.values(VisitOutcome).map(v => (
+                      <button key={v} type="button" onClick={() => setQuickLog({...quickLog, outcome: v})} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${quickLog.outcome === v ? 'bg-swift-red text-white border-swift-red shadow-md' : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-slate-300'}`}>
+                        {v.replace('_', ' ')}
+                      </button>
+                    ))}
+                 </div>
+              </div>
+            </div>
           </form>
         </div>
       )}
@@ -125,9 +139,8 @@ const CallReportModule: React.FC<CallReportModuleProps> = ({ reports, customers,
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
               <th className="px-6 py-5 text-[10px] font-black text-swift-navy uppercase tracking-[0.1em] w-12"></th>
-              <th className="px-6 py-5 text-[10px] font-black text-swift-navy uppercase tracking-[0.1em]">Dispatch Date</th>
               <th className="px-6 py-5 text-[10px] font-black text-swift-navy uppercase tracking-[0.1em]">Wholesaler</th>
-              <th className="px-6 py-5 text-[10px] font-black text-swift-navy uppercase tracking-[0.1em]">Sales Agent</th>
+              <th className="px-6 py-5 text-[10px] font-black text-swift-navy uppercase tracking-[0.1em]">Discussion Summary</th>
               <th className="px-6 py-5 text-[10px] font-black text-swift-navy uppercase tracking-[0.1em]">Outcome</th>
               <th className="px-6 py-5 text-[10px] font-black text-swift-navy uppercase tracking-[0.1em]">Talk Time</th>
               <th className="px-6 py-5 text-[10px] font-black text-swift-navy uppercase tracking-[0.1em] text-right">Ops</th>
@@ -142,9 +155,14 @@ const CallReportModule: React.FC<CallReportModuleProps> = ({ reports, customers,
                       {expandedId === report.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                     </button>
                   </td>
-                  <td className="px-6 py-5 font-mono text-xs text-slate-400">{new Date(report.date).toLocaleDateString()}</td>
-                  <td className="px-6 py-5 font-black text-slate-800 italic uppercase tracking-tighter">{getCustomerName(report.customerId)}</td>
-                  <td className="px-6 py-5"><span className="text-[10px] font-black uppercase text-swift-navy bg-blue-50 px-3 py-1 rounded-xl">{getAgentName(report.agentId)}</span></td>
+                  <td className="px-6 py-5">
+                    <p className="font-black text-slate-800 italic uppercase tracking-tighter">{getCustomerName(report.customerId)}</p>
+                    <p className="text-[9px] font-mono text-slate-400 uppercase">{new Date(report.date).toLocaleDateString()}</p>
+                  </td>
+                  <td className="px-6 py-5">
+                    <p className="text-xs font-bold text-slate-600 line-clamp-1">{report.summary || 'No discussion summary'}</p>
+                    <p className="text-[8px] font-black uppercase text-swift-navy mt-1">AO: {getAgentName(report.agentId)}</p>
+                  </td>
                   <td className="px-6 py-5">
                     <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${
                       report.outcome === VisitOutcome.ORDER_PLACED ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
@@ -165,9 +183,16 @@ const CallReportModule: React.FC<CallReportModuleProps> = ({ reports, customers,
                 </tr>
                 {expandedId === report.id && (
                   <tr className="bg-slate-50/50">
-                    <td colSpan={7} className="px-6 py-8">
+                    <td colSpan={6} className="px-6 py-8">
                       <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-xl max-w-4xl ml-12">
-                        <h5 className="text-[10px] font-black uppercase tracking-widest text-swift-red mb-4">Interaction Transcript</h5>
+                        <div className="flex items-center justify-between mb-4">
+                           <h5 className="text-[10px] font-black uppercase tracking-widest text-swift-red">Interaction Transcript</h5>
+                           <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{new Date(report.date).toLocaleString()}</span>
+                        </div>
+                        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 mb-4">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Brief Discussion</p>
+                          <p className="text-slate-900 font-bold italic">"{report.summary}"</p>
+                        </div>
                         <p className="text-slate-700 leading-relaxed italic text-sm">"{report.notes || 'No notes archived for this call.'}"</p>
                       </div>
                     </td>
