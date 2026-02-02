@@ -1,12 +1,13 @@
 
 import { Partner, Agent, InventoryItem, PartnerType, VisitOutcome, CallReport, User, Role, SystemConfig, LogisticsReport, Commission, Order, OrderItem } from '../types';
+import { externalDb } from './database';
 
 /**
  * SWIFT PLASTICS - CORE DATA ENGINE (Simulated Prisma)
- * Version 9: Enhanced Multi-item Fulfillment & KG Tracking
+ * Version 13: Granular Security Matrix
  */
 
-const DB_KEY = 'swift_plastics_db_v9';
+const DB_KEY = 'swift_plastics_db_v13';
 const CONFIG_KEY = 'swift_plastics_config_v2';
 
 const generateId = () => {
@@ -42,6 +43,9 @@ const getRaw = (): DBState => {
 
 const saveRaw = (data: DBState, silent: boolean = false) => {
   localStorage.setItem(DB_KEY, JSON.stringify(data));
+  if (externalDb.getMode() === 'PRODUCTION') {
+    externalDb.syncToCloud(data);
+  }
   if (!silent) {
     window.dispatchEvent(new CustomEvent('prisma-mutation', { detail: { timestamp: Date.now() } }));
     window.dispatchEvent(new Event('prisma-mutation'));
@@ -49,6 +53,13 @@ const saveRaw = (data: DBState, silent: boolean = false) => {
 };
 
 export const prisma = {
+  dbInfo: {
+    getMode: () => externalDb.getMode(),
+    syncNow: async () => {
+      const state = getRaw();
+      return await externalDb.syncToCloud(state);
+    }
+  },
   config: {
     get: (): SystemConfig => {
       const data = localStorage.getItem(CONFIG_KEY);
@@ -149,27 +160,20 @@ export const prisma = {
     create: (data: Omit<Order, 'id' | 'status'>) => {
       const state = getRaw();
       const newOrder: Order = { ...data, id: generateId(), status: 'PENDING' };
-      
       let allFound = true;
       newOrder.items.forEach(item => {
-        // Find inventory matching product type and ownership (Partner vs Factory)
         const inv = state.inventory.find(invItem => 
           invItem.productType === item.productType && 
           (item.productType === 'PACKING_BAG' ? invItem.partnerId === null : invItem.partnerId === newOrder.partnerId)
         );
-
         if (inv) {
           inv.quantity -= item.quantity;
-          if (item.totalKg && inv.totalKg !== undefined) {
-            inv.totalKg -= item.totalKg;
-          }
+          if (item.totalKg && inv.totalKg !== undefined) inv.totalKg -= item.totalKg;
         } else {
           allFound = false;
         }
       });
-
       if (allFound) newOrder.status = 'FULFILLED';
-      
       state.orders.push(newOrder);
       saveRaw(state);
       return newOrder;
@@ -187,11 +191,6 @@ export const prisma = {
     delete: (id: string) => {
       const state = getRaw();
       state.inventory = state.inventory.filter(i => i.id !== id);
-      saveRaw(state);
-    },
-    increment: (id: string, amount: number) => {
-      const state = getRaw();
-      state.inventory = state.inventory.map(i => i.id === id ? { ...i, quantity: i.quantity + amount, lastRestocked: new Date().toISOString() } : i);
       saveRaw(state);
     }
   },

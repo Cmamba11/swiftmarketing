@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Search, Edit2, Trash2, MapPin, Building2, Plus, X, Globe, FileText, Wallet } from 'lucide-react';
-import { Customer, CustomerType, Role } from '../types';
+import { Customer, CustomerType, Role, PartnerType } from '../types';
 import { prisma } from '../services/prisma';
 
 interface CustomerModuleProps {
@@ -17,7 +17,8 @@ const CustomerModule: React.FC<CustomerModuleProps> = ({ customers, onEdit, onDe
   const [showAdd, setShowAdd] = useState(false);
   const [formData, setFormData] = useState({
     name: '', email: '', phone: '', contactPerson: '', location: '', address: '',
-    type: CustomerType.NEW, status: 'Active Account',
+    // Fix: Use PartnerType enum directly as CustomerType is just a type alias
+    type: PartnerType.NEW, status: 'Active Account',
     taxId: '', businessCategory: 'Distributor', creditLimit: 5000, website: ''
   });
 
@@ -29,7 +30,8 @@ const CustomerModule: React.FC<CustomerModuleProps> = ({ customers, onEdit, onDe
     prisma.wholesaler.create({ ...formData });
     setFormData({ 
       name: '', email: '', phone: '', contactPerson: '', location: '', address: '', 
-      type: CustomerType.NEW, status: 'Active Account',
+      // Fix: Use PartnerType enum directly as CustomerType is just a type alias
+      type: PartnerType.NEW, status: 'Active Account',
       taxId: '', businessCategory: 'Distributor', creditLimit: 5000, website: ''
     });
     setShowAdd(false);

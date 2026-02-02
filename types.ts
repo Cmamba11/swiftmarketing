@@ -4,19 +4,47 @@ export interface Role {
   name: string;
   description: string;
   isSystemAdmin: boolean;
-  canManageInventory: boolean;
-  canManageWholesalers: boolean;
-  canManageAgents: boolean;
-  canManageCalls: boolean;
-  canAccessAI: boolean;
-  canCreate: boolean;
-  canEdit: boolean;
-  canDelete: boolean;
+  
+  // Partner Permissions
+  canViewPartners: boolean;
+  canCreatePartners: boolean;
+  canEditPartners: boolean;
+  canDeletePartners: boolean;
+
+  // Agent Permissions
+  canViewAgents: boolean;
+  canCreateAgents: boolean;
+  canEditAgents: boolean;
+  canDeleteAgents: boolean;
+
+  // Order Permissions
+  canViewOrders: boolean;
+  canCreateOrders: boolean;
+  canEditOrders: boolean;
+  canDeleteOrders: boolean;
+
+  // Inventory Permissions
+  canViewInventory: boolean;
+  canCreateInventory: boolean;
+  canEditInventory: boolean;
+  canDeleteInventory: boolean;
+
+  // Call Report Permissions
+  canViewCalls: boolean;
+  canCreateCalls: boolean;
+  canEditCalls: boolean;
+  canDeleteCalls: boolean;
+
+  // Security & Admin
+  canViewSecurity: boolean;
+  canManageUsers: boolean;
+  canManageRoles: boolean;
 }
 
 export interface User {
   id: string;
   username: string;
+  password?: string;
   name: string;
   roleId: string;
   lastLogin?: string;
@@ -52,10 +80,8 @@ export interface Partner {
   website?: string;
 }
 
-// Aliases for modules using Customer naming convention
 export type Customer = Partner;
 export type CustomerType = PartnerType;
-export const CustomerType = PartnerType;
 
 export interface Agent {
   id: string;
@@ -101,11 +127,11 @@ export interface Order {
 
 export interface InventoryItem {
   id: string;
-  partnerId: string | null; // NULL means Factory Reserve
+  partnerId: string | null;
   productName: string;
   productType: 'ROLLER' | 'PACKING_BAG';
   quantity: number;
-  totalKg?: number; // Tracks current total weight in stock for Rollers
+  totalKg?: number;
   unit: string;
   lastRestocked: string;
 }
@@ -135,4 +161,4 @@ export interface SystemConfig {
   lastUpdated: string;
 }
 
-export type ViewState = 'DASHBOARD' | 'PARTNERS' | 'AGENTS' | 'ORDERS' | 'AI_ARCHITECT' | 'PRODUCTION' | 'CALL_REPORTS' | 'PRISMA_SCHEMA' | 'USER_MANAGEMENT' | 'ROLE_MANAGEMENT';
+export type ViewState = 'DASHBOARD' | 'PARTNERS' | 'AGENTS' | 'ORDERS' | 'PRODUCTION' | 'CALL_REPORTS' | 'PRISMA_SCHEMA' | 'USER_MANAGEMENT' | 'ROLE_MANAGEMENT';

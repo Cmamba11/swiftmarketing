@@ -23,8 +23,8 @@ const AgentModule: React.FC<AgentModuleProps> = ({ agents, onEdit, onDelete, onA
     emergencyContact: '', baseSalary: 3000
   });
 
-  const canCreate = permissions?.isSystemAdmin || permissions?.canCreate;
-  const canDelete = permissions?.isSystemAdmin || permissions?.canDelete;
+  const canCreate = permissions?.isSystemAdmin || permissions?.canCreateAgents;
+  const canDelete = permissions?.isSystemAdmin || permissions?.canDeleteAgents;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,22 +76,6 @@ const AgentModule: React.FC<AgentModuleProps> = ({ agents, onEdit, onDelete, onA
                   <option value="Wholesale Liaison">Wholesale Liaison</option>
                 </select>
               </div>
-              <div className="space-y-1">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Hire Date</label>
-                <input type="date" value={formData.hireDate} onChange={e => setFormData({...formData, hireDate: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold" required />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone</label>
-                <input type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold" required />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Emergency Contact Info</label>
-                <input type="text" value={formData.emergencyContact} onChange={e => setFormData({...formData, emergencyContact: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold" placeholder="Contact Name & Phone" required />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Base Salary ($)</label>
-                <input type="number" value={formData.baseSalary} onChange={e => setFormData({...formData, baseSalary: Number(e.target.value)})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold" required />
-              </div>
             </div>
             <button type="submit" className="w-full py-4 bg-swift-navy text-white rounded-xl font-black uppercase tracking-widest hover:bg-swift-red transition shadow-xl">
               Activate Sales Force Personnel
@@ -112,39 +96,23 @@ const AgentModule: React.FC<AgentModuleProps> = ({ agents, onEdit, onDelete, onA
                   <h3 className="text-xl font-black text-swift-navy tracking-tighter italic uppercase">{agent.name}</h3>
                   <div className="flex items-center gap-2.5 mt-1">
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">ID: {agent.employeeId}</span>
-                    <span className="text-[8px] font-black text-swift-red uppercase">Since {new Date(agent.hireDate).getFullYear()}</span>
                   </div>
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-1">
-                <div className="bg-swift-red text-white px-3 py-1 rounded-xl shadow-lg flex items-center gap-2">
-                  <TrendingUp size={14} />
-                  <span className="text-xs font-black">{agent.performanceScore}%</span>
-                </div>
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{agent.region}</span>
+              <div className="bg-swift-red text-white px-3 py-1 rounded-xl shadow-lg flex items-center gap-2 h-fit">
+                <TrendingUp size={14} />
+                <span className="text-xs font-black">{agent.performanceScore}%</span>
               </div>
             </div>
             
             <div className="p-8 grid grid-cols-2 gap-4">
-              <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1">
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Contact Info</span>
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                  <Phone size={12} className="text-swift-red" /> {agent.phone}
-                </div>
-              </div>
-              <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1">
+              <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1 border border-slate-100">
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Base Payout</span>
                 <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
                   <DollarSign size={12} className="text-swift-red" /> ${agent.baseSalary.toLocaleString()}/mo
                 </div>
               </div>
-              <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1">
-                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Emergency Safety</span>
-                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-700 truncate">
-                   <ShieldAlert size={12} className="text-amber-600" /> {agent.emergencyContact}
-                </div>
-              </div>
-              <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1">
+              <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1 border border-slate-100">
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Acquisitions</span>
                 <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
                   <Award size={12} className="text-swift-navy" /> {agent.customersAcquired} Targets
@@ -154,11 +122,11 @@ const AgentModule: React.FC<AgentModuleProps> = ({ agents, onEdit, onDelete, onA
             
             <div className="mt-auto px-8 py-6 bg-slate-50 flex gap-4 border-t border-slate-100 items-center">
               <button onClick={() => onViewStats(agent)} className="flex-1 py-4 bg-white border border-slate-200 rounded-2xl text-swift-navy text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition shadow-sm">Audit Records</button>
-              <div className="flex gap-2">
-                {canDelete && (
-                  <button onClick={() => onDelete(agent.id)} className="p-4 bg-white border border-slate-200 rounded-2xl text-slate-300 hover:text-swift-red transition"><Trash2 size={18} /></button>
-                )}
-              </div>
+              {canDelete && (
+                <button onClick={() => onDelete(agent.id)} className="p-4 bg-white border border-slate-200 rounded-2xl text-slate-200 hover:text-swift-red transition shadow-sm">
+                  <Trash2 size={18} />
+                </button>
+              )}
             </div>
           </div>
         ))}
