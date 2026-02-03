@@ -27,13 +27,14 @@ const DashboardView: React.FC<DashboardProps> = ({ partners, agents, inventory, 
   const fulfilledOrders = orders.filter(o => o.status === 'FULFILLED').length;
   const fulfillmentRate = totalOrders > 0 ? ((fulfilledOrders / totalOrders) * 100).toFixed(0) : 0;
 
-  const SWIFT_NAVY = '#1A2B6D';
-  const SWIFT_RED = '#E31E24';
-  const COLORS = [SWIFT_RED, SWIFT_NAVY, '#3b82f6', '#8b5cf6'];
+  const SWIFT_NAVY = '#003358';
+  const SWIFT_GREEN = '#67B146';
+  const SWIFT_CYAN = '#0079C1';
+  const COLORS = [SWIFT_GREEN, SWIFT_NAVY, SWIFT_CYAN, '#3b82f6'];
 
   const stats = [
     { label: 'Supply Chain Entities', value: partners.length, icon: Handshake, color: 'bg-swift-navy' },
-    { label: 'Conversion Performance', value: `${fulfillmentRate}%`, icon: TrendingUp, color: 'bg-swift-red' },
+    { label: 'Conversion Performance', value: `${fulfillmentRate}%`, icon: TrendingUp, color: 'bg-swift-green' },
     { label: 'Contract Volume', value: totalOrders, icon: ShoppingCart, color: 'bg-swift-navy' },
   ];
 
@@ -56,11 +57,11 @@ const DashboardView: React.FC<DashboardProps> = ({ partners, agents, inventory, 
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-[#1A2B6D] p-10 rounded-[4rem] text-white shadow-2xl relative overflow-hidden group">
+        <div className="bg-swift-navy p-10 rounded-[4rem] text-white shadow-2xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:scale-110 transition duration-1000 rotate-12"><Package size={220} /></div>
           <div className="relative z-10">
             <h3 className="text-3xl font-black italic uppercase tracking-tighter mb-10 flex items-center gap-4">
-              <Layers size={28} className="text-swift-red" />
+              <Layers size={28} className="text-swift-green" />
               Inventory Partitioning
             </h3>
             <div className="h-[350px]">
@@ -82,7 +83,7 @@ const DashboardView: React.FC<DashboardProps> = ({ partners, agents, inventory, 
 
         <div className="bg-white p-10 rounded-[4rem] border border-slate-200 shadow-sm relative group overflow-hidden flex flex-col">
           <h3 className="text-3xl font-black text-swift-navy mb-10 flex items-center gap-4 uppercase italic tracking-tighter">
-            <CheckCircle2 size={28} className="text-swift-red" />
+            <CheckCircle2 size={28} className="text-swift-green" />
             Conversion Funnel
           </h3>
           <div className="flex-1 flex flex-col justify-center space-y-10 px-6">
@@ -92,7 +93,7 @@ const DashboardView: React.FC<DashboardProps> = ({ partners, agents, inventory, 
                    <p className="text-3xl font-black text-swift-navy italic tracking-tighter">{fulfilledOrders} / {totalOrders}</p>
                 </div>
                 <div className="h-4 w-full bg-slate-100 rounded-full overflow-hidden p-1 shadow-inner">
-                   <div className="h-full bg-swift-red rounded-full shadow-lg transition-all duration-1000" style={{ width: `${fulfillmentRate}%` }} />
+                   <div className="h-full bg-swift-green rounded-full shadow-lg transition-all duration-1000" style={{ width: `${fulfillmentRate}%` }} />
                 </div>
              </div>
              <div className="grid grid-cols-2 gap-6">

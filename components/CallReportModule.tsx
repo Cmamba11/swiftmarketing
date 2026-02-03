@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Phone, Calendar, Clock, MessageSquare, Edit2, Trash2, Search, Filter, PhoneCall, TrendingUp, CheckCircle2, ChevronDown, ChevronUp, Save, Send, User } from 'lucide-react';
+import { Phone, Calendar, Clock, MessageSquare, Edit2, Trash2, Search, Filter, PhoneCall, TrendingUp, CheckCircle2, ChevronDown, ChevronUp, Save, Send, User, FileText } from 'lucide-react';
 import { CallReport, Partner, Agent, VisitOutcome, Role } from '../types';
 import { prisma } from '../services/prisma';
 
@@ -140,7 +140,7 @@ const CallReportModule: React.FC<CallReportModuleProps> = ({ reports, customers,
             <tr>
               <th className="px-6 py-5 text-[10px] font-black text-swift-navy uppercase tracking-[0.1em] w-12"></th>
               <th className="px-6 py-5 text-[10px] font-black text-swift-navy uppercase tracking-[0.1em]">Wholesaler</th>
-              <th className="px-6 py-5 text-[10px] font-black text-swift-navy uppercase tracking-[0.1em]">Discussion Summary</th>
+              <th className="px-6 py-5 text-[10px] font-black text-swift-navy uppercase tracking-[0.1em]">Interaction Recap</th>
               <th className="px-6 py-5 text-[10px] font-black text-swift-navy uppercase tracking-[0.1em]">Outcome</th>
               <th className="px-6 py-5 text-[10px] font-black text-swift-navy uppercase tracking-[0.1em]">Talk Time</th>
               <th className="px-6 py-5 text-[10px] font-black text-swift-navy uppercase tracking-[0.1em] text-right">Ops</th>
@@ -156,12 +156,20 @@ const CallReportModule: React.FC<CallReportModuleProps> = ({ reports, customers,
                     </button>
                   </td>
                   <td className="px-6 py-5">
-                    <p className="font-black text-slate-800 italic uppercase tracking-tighter">{getCustomerName(report.customerId)}</p>
-                    <p className="text-[9px] font-mono text-slate-400 uppercase">{new Date(report.date).toLocaleDateString()}</p>
+                    <p className="font-black text-slate-800 italic uppercase tracking-tighter leading-none">{getCustomerName(report.customerId)}</p>
+                    <p className="text-[9px] font-mono text-slate-400 uppercase mt-1.5">{new Date(report.date).toLocaleDateString()}</p>
                   </td>
                   <td className="px-6 py-5">
-                    <p className="text-xs font-bold text-slate-600 line-clamp-1">{report.summary || 'No discussion summary'}</p>
-                    <p className="text-[8px] font-black uppercase text-swift-navy mt-1">AO: {getAgentName(report.agentId)}</p>
+                    <div className="max-w-md">
+                      <p className="text-[10px] font-black text-swift-navy uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                        <FileText size={10} className="text-swift-red" />
+                        {report.summary || 'General Inquiry'}
+                      </p>
+                      <p className="text-xs font-medium text-slate-500 italic line-clamp-2 leading-relaxed">
+                        {report.notes || 'No detailed transcript recorded.'}
+                      </p>
+                      <p className="text-[8px] font-black uppercase text-slate-300 mt-2 tracking-widest">Authorized AO: {getAgentName(report.agentId)}</p>
+                    </div>
                   </td>
                   <td className="px-6 py-5">
                     <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${
@@ -169,7 +177,7 @@ const CallReportModule: React.FC<CallReportModuleProps> = ({ reports, customers,
                       report.outcome === VisitOutcome.INTERESTED ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-slate-50 text-slate-700 border-slate-100'
                     }`}>{report.outcome.replace('_', ' ')}</span>
                   </td>
-                  <td className="px-6 py-5 font-black text-slate-600 italic">{report.duration}m</td>
+                  <td className="px-6 py-5 font-black text-slate-600 italic tracking-tighter">{report.duration}m</td>
                   <td className="px-6 py-5 text-right">
                     <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition">
                       {canManage && (
@@ -183,17 +191,33 @@ const CallReportModule: React.FC<CallReportModuleProps> = ({ reports, customers,
                 </tr>
                 {expandedId === report.id && (
                   <tr className="bg-slate-50/50">
-                    <td colSpan={6} className="px-6 py-8">
-                      <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-xl max-w-4xl ml-12">
-                        <div className="flex items-center justify-between mb-4">
-                           <h5 className="text-[10px] font-black uppercase tracking-widest text-swift-red">Interaction Transcript</h5>
-                           <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{new Date(report.date).toLocaleString()}</span>
+                    <td colSpan={6} className="px-6 py-8 animate-in slide-in-from-top-2 duration-300">
+                      <div className="bg-white rounded-[2.5rem] border border-slate-200 p-10 shadow-xl max-w-4xl ml-12 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-10 opacity-5 -mr-8 -mt-8"><MessageSquare size={160} /></div>
+                        <div className="flex items-center justify-between mb-8 border-b border-slate-50 pb-6 relative z-10">
+                           <div className="flex items-center gap-3">
+                              <div className="p-3 bg-swift-navy text-white rounded-2xl shadow-lg"><User size={20}/></div>
+                              <div>
+                                <h5 className="text-lg font-black text-swift-navy uppercase italic tracking-tighter">Full Interaction Ledger</h5>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mt-0.5">{new Date(report.date).toLocaleString()} &bull; {report.duration}min Call</p>
+                              </div>
+                           </div>
                         </div>
-                        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 mb-4">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Brief Discussion</p>
-                          <p className="text-slate-900 font-bold italic">"{report.summary}"</p>
+                        <div className="space-y-6 relative z-10">
+                          <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Subject Header</p>
+                            <p className="text-swift-navy font-black text-xl italic uppercase tracking-tighter">"{report.summary}"</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                              <FileText size={12} className="text-swift-red" />
+                              Detailed Conversation Notes
+                            </p>
+                            <p className="text-slate-700 leading-relaxed font-medium italic bg-slate-50/50 p-6 rounded-2xl border border-dashed border-slate-200">
+                              {report.notes || 'No extensive notes were archived for this session.'}
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-slate-700 leading-relaxed italic text-sm">"{report.notes || 'No notes archived for this call.'}"</p>
                       </div>
                     </td>
                   </tr>
@@ -202,6 +226,12 @@ const CallReportModule: React.FC<CallReportModuleProps> = ({ reports, customers,
             ))}
           </tbody>
         </table>
+        {reports.length === 0 && (
+          <div className="py-24 text-center">
+            <div className="opacity-10 mb-4 flex justify-center"><Phone size={64}/></div>
+            <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">No interaction data archived in current partition</p>
+          </div>
+        )}
       </div>
     </div>
   );

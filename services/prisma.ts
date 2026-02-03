@@ -1,127 +1,284 @@
 
-import { Partner, Agent, InventoryItem, PartnerType, VisitOutcome, CallReport, User, Role, SystemConfig, LogisticsReport, Commission, Order, OrderItem, Sale, InventoryLog } from '../types';
-import { externalDb } from './database';
+import { Partner, Agent, CallReport, Order, Sale, InventoryItem, InventoryLog, User, Role, SystemConfig, PartnerType, VisitOutcome, LogisticsReport } from '../types';
 
-/**
- * SWIFT PLASTICS - CORE DATA ENGINE (Simulated Prisma)
- * Version 18: PDF Design Specification Adherence
- */
+const generateId = () => Math.random().toString(36).substring(2, 15);
+const generateInternalOrderId = () => `ORD-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
-const DB_KEY = 'swift_plastics_db_v18';
-const CONFIG_KEY = 'swift_plastics_config_v2';
-
-const generateId = () => {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  return Math.random().toString(36).substring(2, 15);
-};
-
-const generateInternalOrderId = () => {
-  return `ORD-${Math.floor(1000 + Math.random() * 9000)}-${Date.now().toString().slice(-4)}`;
-};
+const DB_KEY = 'swift_industrial_db';
 
 interface DBState {
-  users: User[];
-  roles: Role[];
   partners: Partner[];
   agents: Agent[];
-  inventory: InventoryItem[];
-  inventoryLogs: InventoryLog[];
   calls: CallReport[];
   orders: Order[];
   sales: Sale[];
+  inventory: InventoryItem[];
+  inventoryLogs: InventoryLog[];
+  users: User[];
+  roles: Role[];
+  config: SystemConfig;
   logistics: LogisticsReport[];
-  commissions: Commission[];
 }
 
 const getRaw = (): DBState => {
+  if (typeof window === 'undefined') return seed();
   const data = localStorage.getItem(DB_KEY);
-  const fallback: DBState = { 
-    users: [], roles: [], partners: [], agents: [], inventory: [], 
-    inventoryLogs: [], calls: [], orders: [], sales: [], logistics: [], commissions: [] 
-  };
-  if (!data) return fallback;
-  try {
-    const parsed = JSON.parse(data);
-    return { ...fallback, ...parsed };
-  } catch (e) {
-    return fallback;
-  }
+  if (!data) return seed();
+  return JSON.parse(data);
 };
 
-const saveRaw = (data: DBState, silent: boolean = false) => {
-  localStorage.setItem(DB_KEY, JSON.stringify(data));
-  if (externalDb.getMode() === 'PRODUCTION') {
-    externalDb.syncToCloud(data);
-  }
-  if (!silent) {
-    window.dispatchEvent(new CustomEvent('prisma-mutation', { detail: { timestamp: Date.now() } }));
-    window.dispatchEvent(new Event('prisma-mutation'));
-  }
+const saveRaw = (state: DBState) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(DB_KEY, JSON.stringify(state));
+  window.dispatchEvent(new CustomEvent('prisma-mutation'));
 };
 
-const getCurrentUserName = () => {
-  try {
-    const session = localStorage.getItem('swift_session');
-    if (session) {
-      const user = JSON.parse(session);
-      return user.name;
+const seed = (): DBState => {
+  const initialState: DBState = {
+    partners: [],
+    agents: [],
+    calls: [],
+    orders: [],
+    sales: [],
+    inventory: [],
+    inventoryLogs: [],
+    users: [],
+    roles: [],
+    logistics: [],
+    config: {
+      recommendedCommissionRate: 10,
+      targetEfficiencyMetric: 'Delivery Speed',
+      customerSegmentationAdvice: ['High Volume', 'Retail'],
+      logisticsThreshold: 50,
+      lastUpdated: new Date().toISOString()
     }
-  } catch (e) {}
-  return "System";
+  };
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(DB_KEY, JSON.stringify(initialState));
+  }
+  return initialState;
+};
+
+const getMode = () => {
+  try {
+    return (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') ? 'PRODUCTION' : 'SIMULATION';
+  } catch (e) {
+    return 'SIMULATION';
+  }
 };
 
 export const prisma = {
+  seed,
   dbInfo: {
-    getMode: () => externalDb.getMode(),
-    syncNow: async () => {
-      const state = getRaw();
-      return await externalDb.syncToCloud(state);
-    }
+    getMode: getMode
   },
-  config: {
-    get: (): SystemConfig => {
-      const data = localStorage.getItem(CONFIG_KEY);
-      if (!data) return {
-        recommendedCommissionRate: 10,
-        targetEfficiencyMetric: 'Order Fulfillment',
-        customerSegmentationAdvice: [],
-        logisticsThreshold: 0,
-        lastUpdated: new Date().toISOString()
-      };
-      return JSON.parse(data);
-    },
-    update: (data: Partial<SystemConfig>) => {
-      const current = prisma.config.get();
-      const updated = { ...current, ...data, lastUpdated: new Date().toISOString() };
-      localStorage.setItem(CONFIG_KEY, JSON.stringify(updated));
-      window.dispatchEvent(new Event('prisma-mutation'));
-      return updated;
-    }
-  },
-  role: {
-    findMany: () => getRaw().roles,
-    create: (data: Omit<Role, 'id'>) => {
+  partner: {
+    findMany: () => getRaw().partners,
+    create: (data: any) => {
       const state = getRaw();
-      const newRole = { ...data, id: generateId() };
-      state.roles.push(newRole);
+      const newPartner = { ...data, id: generateId() };
+      state.partners.push(newPartner);
       saveRaw(state);
-      return newRole;
+      return newPartner;
     },
     delete: (id: string) => {
       const state = getRaw();
-      if (state.users.some(u => u.roleId === id)) throw new Error("Role in use.");
-      state.roles = state.roles.filter(r => r.id !== id);
+      state.partners = state.partners.filter(p => p.id !== id);
       saveRaw(state);
+    }
+  },
+  salesAgent: {
+    findMany: () => getRaw().agents,
+    create: (data: any) => {
+      const state = getRaw();
+      const newAgent = { 
+        ...data, 
+        id: generateId(), 
+        performanceScore: 0, 
+        customersAcquired: 0, 
+        dataAccuracyScore: 100, 
+        timelinessScore: 100,
+        baseSalary: Number(data.baseSalary || 0),
+        commissionRate: Number(data.commissionRate || 10),
+        weeklyTarget: Number(data.weeklyTarget || 0),
+        monthlyTarget: Number(data.monthlyTarget || 0)
+      };
+      state.agents.push(newAgent);
+      saveRaw(state);
+      return newAgent;
+    },
+    delete: (id: string) => {
+      const state = getRaw();
+      state.agents = state.agents.filter(a => a.id !== id);
+      saveRaw(state);
+    }
+  },
+  inventory: {
+    findMany: () => getRaw().inventory,
+    findLogs: (itemId: string) => getRaw().inventoryLogs.filter(l => l.inventoryItemId === itemId),
+    create: (data: any) => {
+      const state = getRaw();
+      
+      const existingItem = state.inventory.find(i => 
+        i.partnerId === data.partnerId && 
+        i.productName === data.productName && 
+        i.productType === data.productType
+      );
+
+      if (existingItem) {
+        const addedQty = Number(data.quantity);
+        const addedKg = Number(data.totalKg || 0);
+        
+        existingItem.quantity += addedQty;
+        if (data.totalKg) {
+          existingItem.totalKg = (existingItem.totalKg || 0) + addedKg;
+        }
+        existingItem.lastRestocked = new Date().toISOString();
+
+        state.inventoryLogs.push({
+          id: generateId(),
+          inventoryItemId: existingItem.id,
+          type: 'RESTOCK',
+          change: addedQty,
+          finalQuantity: existingItem.quantity,
+          timestamp: new Date().toISOString(),
+          userName: 'Production System',
+          notes: `Batch addition to existing stock. Added ${addedQty} ${existingItem.unit}${addedKg > 0 ? ` (${addedKg}kg)` : ''}.`
+        });
+
+        saveRaw(state);
+        return existingItem;
+      } else {
+        const newItem = { 
+          ...data, 
+          id: generateId(), 
+          lastRestocked: new Date().toISOString() 
+        };
+        state.inventory.push(newItem);
+        
+        state.inventoryLogs.push({
+          id: generateId(),
+          inventoryItemId: newItem.id,
+          type: 'INITIAL_STOCK',
+          change: Number(data.quantity),
+          finalQuantity: Number(data.quantity),
+          timestamp: new Date().toISOString(),
+          userName: 'Production System',
+          notes: `Initial asset initialization for ${data.productName}.`
+        });
+
+        saveRaw(state);
+        return newItem;
+      }
+    },
+    adjust: (id: string, change: number, type: string, notes: string) => {
+      const state = getRaw();
+      const item = state.inventory.find(i => i.id === id);
+      if (!item) throw new Error("Asset not found in inventory.");
+      item.quantity += change;
+      state.inventoryLogs.push({
+        id: generateId(),
+        inventoryItemId: id,
+        type: type as any,
+        change,
+        finalQuantity: item.quantity,
+        timestamp: new Date().toISOString(),
+        userName: 'Admin/Manager',
+        notes
+      });
+      saveRaw(state);
+    },
+    delete: (id: string) => {
+      const state = getRaw();
+      state.inventory = state.inventory.filter(i => i.id !== id);
+      saveRaw(state);
+    }
+  },
+  order: {
+    findMany: () => getRaw().orders,
+    create: (data: any) => {
+      const state = getRaw();
+      const newOrder: Order = { 
+        ...data, 
+        id: generateId(), 
+        internalId: generateInternalOrderId(),
+        status: 'PENDING' 
+      };
+      state.orders.push(newOrder);
+      saveRaw(state);
+      return newOrder;
+    }
+  },
+  sale: {
+    findMany: () => getRaw().sales,
+    create: (data: any) => {
+      const state = getRaw();
+      const newSale = { ...data, id: generateId(), date: new Date().toISOString() };
+      const invItem = state.inventory.find(i => i.id === data.inventoryItemId);
+      const parentOrder = state.orders.find(o => o.id === data.orderId);
+      
+      const dispatchWeight = Number(data.totalKg || 0);
+      const dispatchUnits = Number(data.volume || 0);
+
+      if (invItem && invItem.quantity >= dispatchUnits) {
+        invItem.quantity -= dispatchUnits;
+        if (invItem.totalKg) {
+          invItem.totalKg = Math.max(0, invItem.totalKg - dispatchWeight);
+        }
+
+        state.inventoryLogs.push({
+          id: generateId(),
+          inventoryItemId: invItem.id,
+          type: 'SALE',
+          change: -dispatchUnits,
+          finalQuantity: invItem.quantity,
+          timestamp: new Date().toISOString(),
+          userName: 'Sales Terminal',
+          notes: `Dispatch of ${dispatchUnits} units / ${dispatchWeight}kg.`
+        });
+
+        // UPDATE ORDER STATUS
+        if (parentOrder) {
+          const currentSaleValue = invItem.productType === 'ROLLER' 
+            ? (dispatchWeight * data.unitPrice) 
+            : (dispatchUnits * data.unitPrice);
+            
+          // If this sale covers or exceeds 90% of order value, mark fulfilled. Else partially.
+          const totalSalesForThisOrder = state.sales
+            .filter(s => s.orderId === parentOrder.id)
+            .reduce((acc, s) => {
+                const sInv = state.inventory.find(inv => inv.id === s.inventoryItemId);
+                return acc + (sInv?.productType === 'ROLLER' ? (s.totalKg * s.unitPrice) : (s.volume * s.unitPrice));
+            }, 0) + currentSaleValue;
+
+          if (totalSalesForThisOrder >= parentOrder.totalValue * 0.95) {
+            parentOrder.status = 'FULFILLED';
+          } else {
+            parentOrder.status = 'PARTIALLY_FULFILLED';
+          }
+        }
+      } else {
+        throw new Error("Insufficient stock volume for this dispatch.");
+      }
+      state.sales.push(newSale);
+      saveRaw(state);
+      return newSale;
+    }
+  },
+  callReport: {
+    findMany: () => getRaw().calls,
+    create: (data: any) => {
+      const state = getRaw();
+      const newCall = { ...data, id: generateId() };
+      state.calls.push(newCall);
+      saveRaw(state);
+      return newCall;
     }
   },
   user: {
     findMany: () => getRaw().users,
-    findUnique: (args: { where: { username: string } }) => {
-      return getRaw().users.find(u => u.username === args.where.username);
-    },
-    create: (data: Omit<User, 'id'>) => {
+    findUnique: ({ where }: { where: { username: string } }) => getRaw().users.find(u => u.username === where.username),
+    create: (data: any) => {
       const state = getRaw();
       const newUser = { ...data, id: generateId() };
       state.users.push(newUser);
@@ -134,280 +291,50 @@ export const prisma = {
       saveRaw(state);
     }
   },
-  partner: {
-    findMany: () => getRaw().partners,
-    create: (data: Omit<Partner, 'id'>) => {
+  role: {
+    findMany: () => getRaw().roles,
+    create: (data: any) => {
       const state = getRaw();
-      const newItem: Partner = { ...data, id: generateId() };
-      state.partners.push(newItem);
-      
-      const agent = state.agents.find(a => a.id === data.assignedAgentId);
-      if (agent) {
-        agent.customersAcquired += 1;
-      }
-
+      const newRole = { ...data, id: generateId() };
+      state.roles.push(newRole);
       saveRaw(state);
-      return newItem;
-    },
-    update: (id: string, data: Partial<Partner>) => {
-      const state = getRaw();
-      state.partners = state.partners.map(p => p.id === id ? { ...p, ...data } : p);
-      saveRaw(state);
+      return newRole;
     },
     delete: (id: string) => {
       const state = getRaw();
-      state.partners = state.partners.filter(p => p.id !== id);
+      state.roles = state.roles.filter(r => r.id !== id);
       saveRaw(state);
     }
   },
-  salesAgent: {
-    findMany: () => getRaw().agents,
-    create: (data: Omit<Agent, 'id' | 'customersAcquired' | 'performanceScore' | 'dataAccuracyScore' | 'timelinessScore'>) => {
+  config: {
+    get: () => getRaw().config,
+    update: (updates: any) => {
       const state = getRaw();
-      const newItem: Agent = { 
-        ...data, 
-        id: generateId(), 
-        customersAcquired: 0, 
-        performanceScore: 0,
-        dataAccuracyScore: 95,
-        timelinessScore: 90
-      };
-      state.agents.push(newItem);
-      saveRaw(state);
-      return newItem;
-    },
-    update: (id: string, data: Partial<Agent>) => {
-      const state = getRaw();
-      state.agents = state.agents.map(a => a.id === id ? { ...a, ...data } : a);
-      saveRaw(state);
-    },
-    delete: (id: string) => {
-      const state = getRaw();
-      state.agents = state.agents.filter(a => a.id !== id);
+      state.config = { ...state.config, ...updates, lastUpdated: new Date().toISOString() };
       saveRaw(state);
     }
   },
-  order: {
-    findMany: () => getRaw().orders,
-    create: (data: Omit<Order, 'id' | 'status' | 'internalId'>) => {
-      const state = getRaw();
-      const newOrder: Order = { 
-        ...data, 
-        id: generateId(), 
-        internalId: generateInternalOrderId(),
-        status: 'PENDING' 
-      };
-      state.orders.push(newOrder);
-      saveRaw(state);
-      return newOrder;
-    },
-    update: (id: string, data: Partial<Order>) => {
-      const state = getRaw();
-      const order = state.orders.find(o => o.id === id);
-      if (order?.status === 'FULFILLED') {
-        throw new Error("Business Rule: Fulfilled orders are locked and cannot be modified.");
+  commission: {
+    findMany: () => [],
+    processBatchCommissions: () => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('prisma-mutation'));
       }
-      state.orders = state.orders.map(o => o.id === id ? { ...o, ...data } : o);
-      saveRaw(state);
-    }
-  },
-  sale: {
-    findMany: () => getRaw().sales,
-    create: (data: Omit<Sale, 'id' | 'date' | 'unitPrice'> & { unitPrice?: number }) => {
-      const state = getRaw();
-      const order = state.orders.find(o => o.id === data.orderId);
-      const inventory = state.inventory.find(i => i.id === data.inventoryItemId);
-
-      // Business Rule: Sales require Order ID
-      if (!order) throw new Error("Sales require Order ID.");
-      
-      // Business Rule: Fulfilled orders are locked
-      if (order.status === 'FULFILLED') {
-        throw new Error("Business Rule: This order is FULFILLED and locked. Sales cannot occur without referencing an open order.");
-      }
-      
-      // Business Rule: Sales must be linked to a Partner Inventory source
-      if (!inventory) throw new Error("Sales must be linked to a Partner Inventory source.");
-      
-      // Business Rule: Inventory cannot go negative
-      if (inventory.quantity < data.quantity) {
-        throw new Error(`Inventory cannot go negative. Requested: ${data.quantity}, Available: ${inventory.quantity}`);
-      }
-
-      const orderItem = order.items.find(i => i.productType === inventory.productType);
-      if (!orderItem) throw new Error("Product type mismatch: Sale does not match any item in the referenced Order.");
-      
-      // Business Rule: Overselling is blocked
-      const remainingNeeded = orderItem.quantity - orderItem.fulfilledQuantity;
-      if (data.quantity > remainingNeeded) {
-        throw new Error(`Overselling Blocked: This sale exceeds the required order quantity. Only ${remainingNeeded} units remaining for fulfillment.`);
-      }
-
-      // 1. Partner Inventory Reduction
-      inventory.quantity -= data.quantity;
-
-      // Log the inventory reduction for traceability
-      state.inventoryLogs.push({
-        id: generateId(),
-        inventoryItemId: inventory.id,
-        type: 'SALE',
-        change: -data.quantity,
-        finalQuantity: inventory.quantity,
-        timestamp: new Date().toISOString(),
-        userName: getCurrentUserName(),
-        notes: `Automated reduction for Order ${order.internalId}`
-      });
-
-      // 2. Update Order Fulfillment
-      orderItem.fulfilledQuantity += data.quantity;
-
-      // 3. Order Completion Logic (System-Driven)
-      const allFulfilled = order.items.every(i => i.fulfilledQuantity >= i.quantity);
-      if (allFulfilled) {
-        order.status = 'FULFILLED';
-        
-        // Callback & Automation Trigger
-        console.log(`[AUTOMATION] Order ${order.internalId} Fulfilled. Triggering callbacks...`);
-        
-        // Trigger Commission Calculation
-        const agent = state.agents.find(a => a.id === data.agentId);
-        if (agent) {
-           const commAmount = order.totalValue * (prisma.config.get().recommendedCommissionRate / 100);
-           state.commissions.push({
-             id: generateId(),
-             agentId: agent.id,
-             amount: commAmount,
-             status: 'Pending',
-             date: new Date().toISOString(),
-             breakdown: [
-               { label: `Fulfillment Automation: ${order.internalId}`, amount: commAmount }
-             ]
-           });
-        }
-      }
-
-      // 4. Traceability Record
-      const newSale: Sale = { 
-        ...data, 
-        id: generateId(), 
-        date: new Date().toISOString(), 
-        unitPrice: data.unitPrice || 15.50 
-      };
-      state.sales.push(newSale);
-      
-      // Update Performance KPI
-      const agent = state.agents.find(a => a.id === data.agentId);
-      if (agent) {
-        agent.performanceScore = Math.min(100, Math.floor((agent.performanceScore + (data.quantity / 20))));
-        agent.dataAccuracyScore = Math.min(100, agent.dataAccuracyScore + 0.5);
-      }
-
-      saveRaw(state);
-      return newSale;
-    }
-  },
-  inventory: {
-    findMany: () => getRaw().inventory,
-    findLogs: (itemId: string) => {
-      return getRaw().inventoryLogs
-        .filter(l => l.inventoryItemId === itemId)
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    },
-    create: (data: Omit<InventoryItem, 'id' | 'lastRestocked'>) => {
-      const state = getRaw();
-      const newItem: InventoryItem = { ...data, id: generateId(), lastRestocked: new Date().toISOString() };
-      state.inventory.push(newItem);
-
-      // Initial Stock Log
-      state.inventoryLogs.push({
-        id: generateId(),
-        inventoryItemId: newItem.id,
-        type: 'INITIAL_STOCK',
-        change: newItem.quantity,
-        finalQuantity: newItem.quantity,
-        timestamp: new Date().toISOString(),
-        userName: getCurrentUserName(),
-        notes: 'Initial production run'
-      });
-
-      saveRaw(state);
-      return newItem;
-    },
-    adjust: (id: string, change: number, type: 'RESTOCK' | 'ADJUSTMENT' | 'REDUCTION', notes?: string) => {
-      const state = getRaw();
-      const item = state.inventory.find(i => i.id === id);
-      if (!item) throw new Error("Item not found");
-
-      if (item.quantity + change < 0) throw new Error("Inventory cannot go negative");
-
-      item.quantity += change;
-      item.lastRestocked = new Date().toISOString();
-
-      state.inventoryLogs.push({
-        id: generateId(),
-        inventoryItemId: item.id,
-        type,
-        change,
-        finalQuantity: item.quantity,
-        timestamp: new Date().toISOString(),
-        userName: getCurrentUserName(),
-        notes
-      });
-
-      saveRaw(state);
-      return item;
-    },
-    delete: (id: string) => {
-      const state = getRaw();
-      state.inventory = state.inventory.filter(i => i.id !== id);
-      state.inventoryLogs = state.inventoryLogs.filter(l => l.inventoryItemId !== id);
-      saveRaw(state);
-    }
-  },
-  callReport: {
-    findMany: () => getRaw().calls,
-    create: (data: Omit<CallReport, 'id'>) => {
-      const state = getRaw();
-      const newItem = { ...data, id: generateId() };
-      state.calls.push(newItem);
-      saveRaw(state);
-      return newItem;
     }
   },
   logistics: {
     findMany: () => getRaw().logistics,
-    create: (data: Omit<LogisticsReport, 'id'>) => {
+    create: (data: any) => {
       const state = getRaw();
-      const newItem = { ...data, id: generateId() };
-      state.logistics.push(newItem);
+      const newReport = { ...data, id: generateId() };
+      state.logistics.push(newReport);
       saveRaw(state);
-      return newItem;
-    }
-  },
-  commission: {
-    findMany: () => getRaw().commissions,
-    processBatchCommissions: () => {
+      return newReport;
+    },
+    delete: (id: string) => {
       const state = getRaw();
-      state.commissions = state.commissions.map(c => ({ ...c, status: 'Paid' as const }));
+      state.logistics = state.logistics.filter(l => l.id !== id);
       saveRaw(state);
-    }
-  },
-  seed: () => {
-    const state = getRaw();
-    if (state.roles.length === 0) {
-      saveRaw({
-        users: [],
-        roles: [],
-        partners: [],
-        agents: [],
-        inventory: [],
-        inventoryLogs: [],
-        calls: [],
-        orders: [],
-        sales: [],
-        logistics: [],
-        commissions: []
-      }, true);
     }
   }
 };

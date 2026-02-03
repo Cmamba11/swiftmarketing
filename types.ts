@@ -1,5 +1,4 @@
 
-
 export interface Role {
   id: string;
   name: string;
@@ -19,7 +18,6 @@ export interface Role {
   canDeleteAgents: boolean;
 
   // Order Permissions
-  // Fixed duplicate identifier 'canViewOrders'
   canViewOrders: boolean;
   canCreateOrders: boolean;
   canEditOrders: boolean;
@@ -91,12 +89,13 @@ export interface Agent {
   role: string;
   performanceScore: number;
   customersAcquired: number;
-  employeeId: string;
+  employeeId: string; // Used as Agent Number in UI
   hireDate: string;
   emergencyContact: string;
   baseSalary: number;
   weeklyTarget: number;
   monthlyTarget: number;
+  commissionRate: number; // Percentage, e.g., 10 for 10%
   // New KPI Specific Fields
   dataAccuracyScore: number; // 0-100%
   timelinessScore: number; // 0-100%
@@ -108,8 +107,9 @@ export interface Sale {
   agentId: string;
   partnerId: string;
   inventoryItemId: string; 
-  quantity: number;
-  unitPrice: number; // For value calculation
+  totalKg: number; // Dispatched Weight
+  volume: number; // Dispatched Units
+  unitPrice: number; // For value calculation (Rate per KG or Per Bag)
   date: string;
   notes: string;
 }
@@ -138,10 +138,11 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
-  partnerId: string;
+  partnerId?: string;
+  guestCompanyName?: string; // Added for walk-in orders
   items: OrderItem[];
   orderDate: string;
-  status: 'PENDING' | 'FULFILLED' | 'CANCELLED';
+  status: 'PENDING' | 'FULFILLED' | 'CANCELLED' | 'PARTIALLY_FULFILLED';
   totalValue: number;
   internalId: string;
 }

@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -10,8 +11,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
       :root {
+        --swift-navy: #003358;
+        --swift-green: #67B146;
+        --swift-cyan: #0079C1;
         --swift-red: #E31E24;
-        --swift-navy: #1A2B6D;
       }
       body {
         font-family: 'Inter', sans-serif;
@@ -19,17 +22,19 @@
         margin: 0;
         padding: 0;
       }
-      .bg-swift-red { background-color: var(--swift-red); }
       .bg-swift-navy { background-color: var(--swift-navy); }
-      .text-swift-red { color: var(--swift-red); }
+      .bg-swift-green { background-color: var(--swift-green); }
+      .bg-swift-cyan { background-color: var(--swift-cyan); }
       .text-swift-navy { color: var(--swift-navy); }
-      .border-swift-red { border-color: var(--swift-red); }
+      .text-swift-green { color: var(--swift-green); }
+      .text-swift-cyan { color: var(--swift-cyan); }
       .border-swift-navy { border-color: var(--swift-navy); }
+      .border-swift-green { border-color: var(--swift-green); }
       
       .nav-active {
-        background-color: var(--swift-red) !important;
+        background-color: var(--swift-green) !important;
         color: white !important;
-        box-shadow: 0 4px 12px rgba(227, 30, 36, 0.2);
+        box-shadow: 0 4px 12px rgba(103, 177, 70, 0.2);
       }
 
       /* Scrollbar styling */

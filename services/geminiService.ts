@@ -1,10 +1,9 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 
-const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export const fineTuneSystemParams = async (currentSettings: any, userGoal: string) => {
-  const ai = getAI();
+  // Always initialize GoogleGenAI with a named parameter object.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-preview',
     contents: `You are an Industrial Supply Chain Architect.
@@ -22,16 +21,36 @@ export const fineTuneSystemParams = async (currentSettings: any, userGoal: strin
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          recommendedCommissionRate: { type: Type.NUMBER, description: "Suggested base commission rate (percentage)" },
-          targetEfficiencyMetric: { type: Type.STRING, description: "Primary KPI for the Order-to-Sale cycle" },
-          customerSegmentationAdvice: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Segments for inventory partitioning" },
-          logisticsThreshold: { type: Type.NUMBER, description: "Suggested fuel/delivery cap" },
-          summary: { type: Type.STRING, description: "Explanation of how these settings support the roadmap." }
+          recommendedCommissionRate: { 
+            type: Type.NUMBER,
+            description: "The optimized commission percentage for the sales force."
+          },
+          targetEfficiencyMetric: { 
+            type: Type.STRING,
+            description: "The key performance indicator to track (e.g., 'Delivery Speed')."
+          },
+          customerSegmentationAdvice: { 
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+            description: "Strategic advice on how to segment industrial partners."
+          },
+          logisticsThreshold: { 
+            type: Type.NUMBER,
+            description: "Daily threshold limit for fuel or distance."
+          },
+          summary: { 
+            type: Type.STRING,
+            description: "High-level architectural reasoning for these adjustments."
+          }
         },
         required: ["recommendedCommissionRate", "targetEfficiencyMetric", "customerSegmentationAdvice", "logisticsThreshold", "summary"]
-      }
-    }
+      },
+    },
   });
 
-  return JSON.parse(response.text || '{}');
+  // Access the text directly via the .text property as per SDK guidelines.
+  const jsonStr = response.text?.trim();
+  if (!jsonStr) throw new Error("AI architect failed to generate recommendations.");
+  
+  return JSON.parse(jsonStr);
 };

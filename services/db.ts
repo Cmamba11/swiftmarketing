@@ -12,16 +12,10 @@ export const db = {
     // Fix: Corrected property names to match prisma export
     commissions: prisma.commission.findMany(),
     logistics: prisma.logistics.findMany(),
-    config: {
-       recommendedCommissionRate: 12.5,
-       targetEfficiencyMetric: 'Delivery Fulfillment Speed',
-       customerSegmentationAdvice: [],
-       logisticsThreshold: 50,
-       lastUpdated: '2023-10-01'
-    }
+    config: prisma.config.get()
   }),
   updateConfig: (updates: any) => {
-    console.debug('Config updated locally', updates);
+    prisma.config.update(updates);
   },
   // Fix: Corrected processBatchCommissions to call the existing method in prisma.ts
   processBatchCommissions: () => {
