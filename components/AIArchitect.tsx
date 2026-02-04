@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { Sparkles, BrainCircuit, ShieldCheck, RefreshCw, Send, Check } from 'lucide-react';
+import { Sparkles, BrainCircuit, ShieldCheck, RefreshCw, Send, Check, Rocket, ListChecks, Activity, Settings2, ArrowRight } from 'lucide-react';
 import { fineTuneSystemParams } from '../services/geminiService';
 import { prisma } from '../services/prisma';
 import { SystemConfig } from '../types';
@@ -24,7 +23,7 @@ const AIArchitect: React.FC<AIArchitectProps> = ({ currentConfig }) => {
       setRecommendations(result);
     } catch (err) {
       console.error(err);
-      alert("AI Analysis failed. Please check your API connectivity.");
+      alert("AI Analysis failed. Please check your connectivity.");
     } finally {
       setLoading(false);
     }
@@ -32,7 +31,6 @@ const AIArchitect: React.FC<AIArchitectProps> = ({ currentConfig }) => {
 
   const handleApply = () => {
     if (!recommendations) return;
-    // Persist to actual simulation database
     prisma.config.update({
       recommendedCommissionRate: recommendations.recommendedCommissionRate,
       targetEfficiencyMetric: recommendations.targetEfficiencyMetric,
@@ -44,99 +42,152 @@ const AIArchitect: React.FC<AIArchitectProps> = ({ currentConfig }) => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <div className="bg-gradient-to-br from-[#1A2B6D] to-indigo-900 rounded-[3rem] p-10 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-8 opacity-10">
-          <BrainCircuit size={200} />
+    <div className="max-w-6xl mx-auto space-y-8 pb-20">
+      {/* Header Banner */}
+      <div className="bg-gradient-to-br from-swift-navy via-[#0A192F] to-indigo-900 rounded-[3.5rem] p-12 text-white shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-12 opacity-10 -mr-16 -mt-16 rotate-12">
+          <BrainCircuit size={320} />
         </div>
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-4 bg-white/20 w-fit px-3 py-1 rounded-full backdrop-blur-md">
-            <Sparkles size={16} />
-            <span className="text-xs font-bold uppercase tracking-widest">Powered by Gemini 3 Pro</span>
+        <div className="relative z-10 max-w-2xl">
+          <div className="flex items-center gap-3 mb-6 bg-white/10 w-fit px-4 py-2 rounded-full border border-white/5 backdrop-blur-xl">
+            <Sparkles size={20} className="text-swift-green animate-pulse" />
+            <span className="text-xs font-black uppercase tracking-[0.2em]">GenAI System Architect • v4.0</span>
           </div>
-          <h2 className="text-4xl font-black mb-4 uppercase italic tracking-tight">PolyFlow AI Architect</h2>
-          <p className="text-blue-100 text-lg max-w-xl leading-relaxed">
-            Describe your manufacturing goals or supply chain challenges, 
-            and I'll automatically reconfigure system thresholds for your specific needs.
+          <h2 className="text-6xl font-black mb-6 uppercase italic tracking-tighter leading-none">Swift Strategy Tuner</h2>
+          <p className="text-blue-100 text-xl font-medium opacity-80 leading-relaxed">
+            Specify your manufacturing objectives or logistical bottlenecks. 
+            I will generate a technical roadmap and re-calibrate your system parameters automatically.
           </p>
         </div>
       </div>
 
-      <div className="bg-white rounded-[2.5rem] border border-slate-200 p-10 shadow-sm">
-        <h3 className="text-xl font-black text-swift-navy mb-6 flex justify-between items-center uppercase italic tracking-tighter">
-          Fine-Tuning Request
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Current: {currentConfig.recommendedCommissionRate}% / {currentConfig.logisticsThreshold}L</span>
-        </h3>
-        <div className="space-y-4">
-          <textarea 
-            value={goal}
-            onChange={(e) => setGoal(e.target.value)}
-            placeholder="Example: We want to optimize for high-volume roller sales in Industrial Zone A while capping fuel usage strictly for deliveries..."
-            className="w-full h-40 p-6 bg-slate-50 border border-slate-200 rounded-3xl focus:ring-2 focus:ring-swift-red outline-none transition resize-none font-medium"
-          ></textarea>
-          <button 
-            onClick={handleTune}
-            disabled={loading || !goal}
-            className="w-full flex items-center justify-center gap-3 py-5 bg-[#E31E24] hover:opacity-90 disabled:bg-slate-300 text-white font-black uppercase tracking-widest rounded-2xl transition-all shadow-xl active:scale-95"
-          >
-            {loading ? <RefreshCw className="animate-spin" /> : <Send size={20} />}
-            {loading ? 'Synthesizing Roadmap...' : 'Generate Optimization Plan'}
-          </button>
-        </div>
-      </div>
-
-      {recommendations && (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div className="bg-white p-8 rounded-[2.5rem] border-l-8 border-l-blue-600 border border-slate-200 shadow-sm group">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Recommended Commission</p>
-              <p className="text-4xl font-black text-swift-navy group-hover:text-blue-600 transition tracking-tighter italic">{recommendations.recommendedCommissionRate}%</p>
-            </div>
-            <div className="bg-white p-8 rounded-[2.5rem] border-l-8 border-l-emerald-600 border border-slate-200 shadow-sm group">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Target Efficiency Metric</p>
-              <p className="text-4xl font-black text-swift-navy group-hover:text-emerald-600 transition tracking-tighter italic uppercase">{recommendations.targetEfficiencyMetric.split(' ')[0]}</p>
-            </div>
-            <div className="bg-white p-8 rounded-[2.5rem] border-l-8 border-l-amber-600 border border-slate-200 shadow-sm group">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Logistics Threshold (Daily)</p>
-              <p className="text-4xl font-black text-swift-navy group-hover:text-amber-600 transition tracking-tighter italic">{recommendations.logisticsThreshold}L</p>
-            </div>
-            <div className="bg-white p-8 rounded-[2.5rem] border-l-8 border-l-swift-red border border-slate-200 shadow-sm">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">System Integration</p>
-              <div className="flex items-center gap-2 text-emerald-600 font-black uppercase italic">
-                <ShieldCheck size={20} />
-                <span>Plan Validated</span>
-              </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Input Controls */}
+        <div className="lg:col-span-5 bg-white rounded-[3rem] border border-slate-200 p-10 shadow-sm sticky top-8">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-2xl font-black text-swift-navy uppercase italic tracking-tighter flex items-center gap-3">
+              <Settings2 size={24} className="text-swift-red" />
+              Strategic Goal
+            </h3>
+            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
+              Last Sync: {new Date(currentConfig.lastUpdated).toLocaleDateString()}
             </div>
           </div>
-
-          <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm">
-            <h4 className="font-black text-swift-navy uppercase italic mb-6 text-xl tracking-tighter">AI Logic Summary</h4>
-            <p className="text-slate-600 leading-relaxed mb-8 text-lg">
-              {recommendations.summary}
-            </p>
-            
-            <h4 className="font-black text-swift-navy uppercase italic mb-4 tracking-tight">Strategic Segmentation</h4>
-            <ul className="space-y-3 mb-10">
-              {recommendations.customerSegmentationAdvice.map((advice: string, i: number) => (
-                <li key={i} className="flex items-start gap-4 text-slate-700 bg-slate-50 p-5 rounded-2xl border border-slate-100">
-                  <div className="mt-1.5 w-2 h-2 rounded-full bg-swift-red flex-shrink-0"></div>
-                  <span className="font-medium">{advice}</span>
-                </li>
-              ))}
-            </ul>
+          
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Objective Context</label>
+              <textarea 
+                value={goal}
+                onChange={(e) => setGoal(e.target.value)}
+                placeholder="E.g. Transition focus to high-margin industrial rollers while reducing dispatch fuel waste in the Northern territory..."
+                className="w-full h-48 p-6 bg-slate-50 border border-slate-200 rounded-[2rem] focus:ring-4 focus:ring-swift-navy/5 focus:border-swift-navy outline-none transition resize-none font-bold text-slate-800 placeholder:opacity-30"
+              ></textarea>
+            </div>
             
             <button 
-              onClick={handleApply}
-              className={`w-full py-5 flex items-center justify-center gap-3 text-white font-black uppercase tracking-[0.2em] rounded-2xl transition shadow-2xl active:scale-95 ${
-                applied ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-swift-navy hover:bg-swift-navy/90'
-              }`}
+              onClick={handleTune}
+              disabled={loading || !goal}
+              className="w-full flex items-center justify-center gap-4 py-6 bg-swift-navy text-white font-black uppercase tracking-[0.2em] rounded-[2rem] transition-all shadow-2xl active:scale-95 disabled:bg-slate-200 group"
             >
-              {applied ? <Check size={20} /> : <RefreshCw size={18} />}
-              {applied ? 'Parameters Locked & Persisted' : 'Apply New Fine-Tuned Roadmap'}
+              {loading ? <RefreshCw className="animate-spin" /> : <Rocket size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />}
+              {loading ? 'Synthesizing Architecture...' : 'Architect System Roadmap'}
             </button>
           </div>
         </div>
-      )}
+
+        {/* Results / Roadmap */}
+        <div className="lg:col-span-7 space-y-8">
+          {!recommendations && !loading && (
+            <div className="h-[500px] border-2 border-dashed border-slate-200 rounded-[3rem] flex flex-col items-center justify-center text-slate-300 opacity-50 bg-slate-50/50">
+               <Activity size={64} className="mb-4" />
+               <p className="font-black uppercase tracking-[0.4em] text-xs">Waiting for Strategist Prompt</p>
+            </div>
+          )}
+
+          {loading && (
+             <div className="bg-white p-12 rounded-[3rem] border border-slate-200 shadow-sm space-y-10 animate-pulse">
+                <div className="h-8 bg-slate-100 rounded-full w-48" />
+                <div className="space-y-4">
+                  <div className="h-4 bg-slate-100 rounded-full w-full" />
+                  <div className="h-4 bg-slate-100 rounded-full w-5/6" />
+                  <div className="h-4 bg-slate-100 rounded-full w-4/6" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="h-32 bg-slate-100 rounded-[2rem]" />
+                  <div className="h-32 bg-slate-100 rounded-[2rem]" />
+                </div>
+             </div>
+          )}
+
+          {recommendations && !loading && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-700">
+              {/* Parameter Dashboard */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-lg transition group">
+                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Target Commission Rate</p>
+                   <p className="text-4xl font-black text-swift-navy italic tracking-tighter group-hover:text-swift-red transition">{recommendations.recommendedCommissionRate}%</p>
+                </div>
+                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm hover:shadow-lg transition group">
+                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Daily Logistics Cap</p>
+                   <p className="text-4xl font-black text-swift-navy italic tracking-tighter group-hover:text-swift-green transition">{recommendations.logisticsThreshold}L</p>
+                </div>
+              </div>
+
+              {/* Phased Roadmap */}
+              <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm overflow-hidden relative">
+                <div className="absolute top-0 right-0 p-8 opacity-5 -mr-8 -mt-8 rotate-12"><ListChecks size={160} /></div>
+                <h3 className="text-2xl font-black text-swift-navy uppercase italic tracking-tighter mb-8 flex items-center gap-4 relative z-10">
+                  <Activity size={24} className="text-swift-green" />
+                  Implementation Roadmap
+                </h3>
+                
+                <div className="space-y-8 relative z-10">
+                  {recommendations.roadmap.map((step: any, idx: number) => (
+                    <div key={idx} className="flex gap-6 group">
+                      <div className="flex flex-col items-center">
+                        <div className="w-10 h-10 bg-swift-navy text-white rounded-xl flex items-center justify-center font-black text-xs shadow-lg group-hover:bg-swift-red transition shrink-0">
+                          {step.phase}
+                        </div>
+                        {idx !== recommendations.roadmap.length - 1 && <div className="w-0.5 flex-1 bg-slate-100 my-2" />}
+                      </div>
+                      <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100 group-hover:bg-white group-hover:shadow-xl transition-all border-l-4 border-l-slate-200 group-hover:border-l-swift-green flex-1">
+                        <h4 className="font-black text-swift-navy uppercase italic tracking-tight text-lg mb-1">{step.title}</h4>
+                        <p className="text-sm font-medium text-slate-500 leading-relaxed mb-4">{step.description}</p>
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl w-fit shadow-sm">
+                           <Check size={12} className="text-swift-green" />
+                           <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Milestone: {step.milestone}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-12 pt-10 border-t border-slate-100 space-y-6">
+                   <div className="bg-blue-50 p-6 rounded-[2rem] border border-blue-100">
+                      <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <ShieldCheck size={14} /> System Architect Reasoning
+                      </h4>
+                      <p className="text-blue-900 text-sm font-medium leading-relaxed italic">
+                        "{recommendations.summary}"
+                      </p>
+                   </div>
+                   
+                   <button 
+                    onClick={handleApply}
+                    className={`w-full py-6 flex items-center justify-center gap-3 text-white font-black uppercase tracking-[0.3em] rounded-[2rem] transition-all shadow-2xl active:scale-95 ${
+                      applied ? 'bg-swift-green hover:bg-emerald-600' : 'bg-swift-navy hover:bg-swift-navy/90'
+                    }`}
+                  >
+                    {applied ? <Check size={20} /> : <ArrowRight size={20} />}
+                    {applied ? 'Roadmap Applied & Persisted' : 'Execute System Overhaul'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

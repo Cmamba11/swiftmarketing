@@ -98,7 +98,8 @@ const CallReportModule: React.FC<CallReportModuleProps> = ({ reports, customers,
               <div className="space-y-1">
                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Outcome</label>
                  <div className="flex flex-wrap gap-2">
-                    {Object.values(VisitOutcome).map(v => (
+                    {/* Fixed: Cast Object.values(VisitOutcome) to VisitOutcome[] to resolve key and replace() type errors */}
+                    {(Object.values(VisitOutcome) as VisitOutcome[]).map(v => (
                       <button key={v} type="button" onClick={() => setQuickLog({...quickLog, outcome: v})} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${quickLog.outcome === v ? 'bg-swift-red text-white border-swift-red shadow-md' : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-slate-300'}`}>
                         {v.replace('_', ' ')}
                       </button>

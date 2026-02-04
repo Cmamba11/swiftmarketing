@@ -47,7 +47,7 @@ export interface User {
   name: string;
   roleId: string;
   lastLogin?: string;
-  agentId?: string;
+  agentId?: string; // Links a user to their specific Sales Agent profile
 }
 
 export enum PartnerType {
@@ -72,11 +72,11 @@ export interface Partner {
   contactPerson: string;
   location: string;
   address: string;
-  assignedAgentId: string;
+  assignedAgentId: string; // Known as "Account Officer"
   status: string;
   businessCategory: string;
   website?: string;
-  defaultRatePerKg?: number;
+  defaultRatePerKg?: number; // Added to store partner-specific pricing
 }
 
 export interface Agent {
@@ -88,15 +88,16 @@ export interface Agent {
   role: string;
   performanceScore: number;
   customersAcquired: number;
-  employeeId: string;
+  employeeId: string; // Used as Agent Number in UI
   hireDate: string;
   emergencyContact: string;
   baseSalary: number;
   weeklyTarget: number;
   monthlyTarget: number;
-  commissionRate: number;
-  dataAccuracyScore: number;
-  timelinessScore: number;
+  commissionRate: number; // Percentage, e.g., 10 for 10%
+  // New KPI Specific Fields
+  dataAccuracyScore: number; // 0-100%
+  timelinessScore: number; // 0-100%
 }
 
 export interface Sale {
@@ -104,10 +105,10 @@ export interface Sale {
   orderId: string;
   agentId: string;
   partnerId: string;
-  inventoryItemId: string;
-  totalKg: number;
-  volume: number;
-  unitPrice: number;
+  inventoryItemId: string; 
+  totalKg: number; // Dispatched Weight
+  volume: number; // Dispatched Units
+  unitPrice: number; // For value calculation (Rate per KG or Per Bag)
   date: string;
   notes: string;
 }
@@ -119,7 +120,7 @@ export interface CallReport {
   date: string;
   duration: number;
   outcome: VisitOutcome;
-  summary: string;
+  summary: string; // Added for brief discussion overview
   notes: string;
   orderId?: string;
 }
@@ -128,16 +129,16 @@ export interface OrderItem {
   id: string;
   productName: string;
   productType: 'ROLLER' | 'PACKING_BAG';
-  quantity: number;
-  totalKg?: number;
-  ratePerKg?: number;
-  fulfilledQuantity: number;
+  quantity: number; 
+  totalKg?: number; 
+  ratePerKg?: number; // Specific rate used for this order item
+  fulfilledQuantity: number; 
 }
 
 export interface Order {
   id: string;
   partnerId?: string;
-  guestCompanyName?: string;
+  guestCompanyName?: string; // Added for walk-in orders
   items: OrderItem[];
   orderDate: string;
   status: 'PENDING' | 'FULFILLED' | 'CANCELLED' | 'PARTIALLY_FULFILLED';

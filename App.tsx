@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   LayoutDashboard, Handshake, UserSquare2, Menu, X, Package, 
   Code, PhoneCall, Database, Search, Zap, LogOut, ShieldAlert, UserPlus, Trash2, Edit3, Save, 
   BarChart3, TrendingUp, Target, Award, ShieldCheck, Key, Rocket, Settings2, Plus, Check, Shield, User as UserIcon, Lock,
-  ShoppingCart, ClipboardList, Cloud, CloudOff, RefreshCw, Eye, EyeOff, Info, Briefcase, ReceiptText, Fingerprint, Sparkles
+  ShoppingCart, ClipboardList, Cloud, CloudOff, RefreshCw, Eye, EyeOff, Info, Briefcase, ReceiptText, Fingerprint, Sparkles, BrainCircuit
 } from 'lucide-react';
 import { ViewState, Agent, Partner, CallReport, User as UserType, Role, InventoryItem, Order, Sale } from './types';
 import { prisma } from './services/prisma';
@@ -19,6 +18,7 @@ import OrderModule from './components/OrderModule';
 import SalesModule from './components/SalesModule';
 import PortfolioView from './components/PortfolioView';
 import PrismaExplorer from './components/PrismaExplorer';
+import AIArchitect from './components/AIArchitect';
 
 const SwiftLogo = ({ className = "", size = "md" }: { className?: string, size?: "sm" | "md" | "lg" }) => {
   const sizes = {
@@ -130,7 +130,6 @@ const UserManagementView = ({ users, roles, agents, onDelete, onCreate }: { user
   );
 };
 
-// Add RoleManagementView component to handle role management UI and resolve 'Cannot find name RoleManagementView' error
 const RoleManagementView = ({ roles, onDelete, onCreate }: { roles: Role[], onDelete: (id: string) => void, onCreate: (data: Omit<Role, 'id'>) => void }) => {
   const [showAdd, setShowAdd] = useState(false);
   const [formData, setFormData] = useState({ 
@@ -212,7 +211,6 @@ const RoleManagementView = ({ roles, onDelete, onCreate }: { roles: Role[], onDe
   );
 };
 
-// ... Rest of the login view component stays the same ...
 const LoginView = ({ onLogin, onBootstrap }: { onLogin: (user: UserType) => void, onBootstrap: () => void }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -334,7 +332,6 @@ const LoginView = ({ onLogin, onBootstrap }: { onLogin: (user: UserType) => void
 };
 
 const App: React.FC = () => {
-  // ... Session and DB Logic ...
   const [currentUser, setCurrentUser] = useState<UserType | null>(() => {
     try {
       const saved = localStorage.getItem('swift_session');
@@ -419,6 +416,7 @@ const App: React.FC = () => {
           <nav className="flex-1 p-3 space-y-2 mt-4">
             {[
               { id: 'DASHBOARD', label: 'Overview', icon: LayoutDashboard, perm: true },
+              { id: 'AI_ARCHITECT', label: 'AI Strategy', icon: BrainCircuit, perm: isAdmin },
               { id: 'PORTFOLIO', label: 'My Portfolio', icon: Briefcase, perm: true },
               { id: 'PARTNERS', label: 'Partner Hub', icon: Handshake, perm: hasPerm('canViewPartners') },
               { id: 'ORDERS', label: 'Order Hub', icon: ShoppingCart, perm: hasPerm('canViewOrders') },
@@ -445,7 +443,7 @@ const App: React.FC = () => {
         
         <main className="flex-1 overflow-y-auto bg-slate-50 p-10">
             {activeView === 'DASHBOARD' && <DashboardView partners={dbData.partners} agents={dbData.agents} inventory={dbData.inventory} orders={dbData.orders} />}
-            {/* Fix: Pass inventory={dbData.inventory} to PortfolioView to resolve property missing error */}
+            {activeView === 'AI_ARCHITECT' && <AIArchitect currentConfig={dbData.config} />}
             {activeView === 'PORTFOLIO' && <PortfolioView currentUser={currentUser} agents={dbData.agents} partners={dbData.partners} orders={dbData.orders} sales={dbData.sales} reports={dbData.calls} inventory={dbData.inventory} isAdmin={isAdmin} />}
             {activeView === 'PARTNERS' && <PartnerModule partners={dbData.partners} inventory={dbData.inventory} agents={dbData.agents} onDelete={id => prisma.partner.delete(id)} searchTerm={searchTerm} onSearchChange={setSearchTerm} permissions={currentUserRole} />}
             {activeView === 'ORDERS' && <OrderModule orders={dbData.orders} partners={dbData.partners} inventory={dbData.inventory} currentUser={currentUser} />}

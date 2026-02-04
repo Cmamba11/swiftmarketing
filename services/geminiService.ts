@@ -1,21 +1,21 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 export const fineTuneSystemParams = async (currentSettings: any, userGoal: string) => {
-  // Always initialize GoogleGenAI with a named parameter object.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-preview',
-    contents: `You are an Industrial Supply Chain Architect.
+    contents: `You are an Industrial Supply Chain & Manufacturing Architect for Swift Plastics Inc.
     The user is implementing a strict "ORDER -> SALES -> PARTNER INVENTORY" system.
     Goal: ${userGoal}
     
     Current System Context: ${JSON.stringify(currentSettings)}
     
-    Provide optimization advice for:
-    1. Commission tiers based on fulfillment speed.
-    2. Inventory thresholds for Partner Asset Pools.
-    3. Metrics for Marketing-to-Revenue traceability.`,
+    Provide a detailed optimization plan and a phased implementation roadmap.
+    1. Commission tiers based on fulfillment speed and target achievement.
+    2. Inventory thresholds for Partner Asset Pools (Rollers & Bags).
+    3. Metrics for Logistics-to-Revenue traceability.
+    4. A 3-step execution roadmap with clear milestones.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -23,32 +23,44 @@ export const fineTuneSystemParams = async (currentSettings: any, userGoal: strin
         properties: {
           recommendedCommissionRate: { 
             type: Type.NUMBER,
-            description: "The optimized commission percentage for the sales force."
+            description: "The optimized commission percentage."
           },
           targetEfficiencyMetric: { 
             type: Type.STRING,
-            description: "The key performance indicator to track (e.g., 'Delivery Speed')."
+            description: "The primary KPI to focus on."
           },
           customerSegmentationAdvice: { 
             type: Type.ARRAY,
             items: { type: Type.STRING },
-            description: "Strategic advice on how to segment industrial partners."
+            description: "Strategies for partner management."
           },
           logisticsThreshold: { 
             type: Type.NUMBER,
-            description: "Daily threshold limit for fuel or distance."
+            description: "Daily fuel or distance cap."
           },
           summary: { 
             type: Type.STRING,
-            description: "High-level architectural reasoning for these adjustments."
+            description: "Executive summary of the architectural changes."
+          },
+          roadmap: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                phase: { type: Type.STRING },
+                title: { type: Type.STRING },
+                description: { type: Type.STRING },
+                milestone: { type: Type.STRING }
+              },
+              required: ["phase", "title", "description", "milestone"]
+            }
           }
         },
-        required: ["recommendedCommissionRate", "targetEfficiencyMetric", "customerSegmentationAdvice", "logisticsThreshold", "summary"]
+        required: ["recommendedCommissionRate", "targetEfficiencyMetric", "customerSegmentationAdvice", "logisticsThreshold", "summary", "roadmap"]
       },
     },
   });
 
-  // Access the text directly via the .text property as per SDK guidelines.
   const jsonStr = response.text?.trim();
   if (!jsonStr) throw new Error("AI architect failed to generate recommendations.");
   
