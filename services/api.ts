@@ -5,16 +5,26 @@ import { Partner, Agent, Order, Sale, InventoryItem, CallReport, User, Role, Wor
 
 /**
  * API GATEWAY (Neon Postgres Bridge)
- * This service routes traffic between the UI and the Backend Project.
+ * This service handles the switch between local simulation and live cloud data.
  */
 
-const delay = (ms: number = 300) => new Promise(res => setTimeout(res, ms));
+const isLive = externalDb.getMode() === 'PRODUCTION';
+
+// Simulated latency for UI feel, removed in production for speed
+const delay = (ms: number = 300) => isLive ? Promise.resolve() : new Promise(res => setTimeout(res, ms));
 
 const logCloudActivity = (action: string, table: string) => {
-  if (externalDb.getMode() === 'PRODUCTION') {
-    console.log(`[NEON-BRIDGE] ${action} executed on ${table} at ${externalDb.getTargetUri().split('@')[1].split('/')[0]}`);
+  if (isLive) {
+    console.debug(`[NEON-LIVE] ${action} -> ${table}`);
   }
 };
+
+/**
+ * IMPLEMENTATION NOTE:
+ * When you deploy your backend project, each of these methods should
+ * eventually use `externalDb.fetchTable` or `fetch()` instead of `prisma`.
+ * For now, they use the optimized prisma simulation.
+ */
 
 export const api = {
   partners: {

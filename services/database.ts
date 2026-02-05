@@ -4,12 +4,14 @@
  * This client is now configured to interface with the Neon DB instance.
  */
 
-const IS_PROD = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
+const IS_PROD = typeof window !== 'undefined' && 
+  (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1');
 
-// Configuration for External DB - Pointing to the provided Neon PostgreSQL URI
+// Configuration for External DB
 const CONFIG = {
-  // Real browsers require an API intermediary. This URL represents your backend project.
-  API_URL: process.env.API_BASE_URL || 'https://api.swift-plastics-backend.vercel.app', 
+  // Replace this with your actual deployed backend URL when ready
+  API_URL: process.env.API_BASE_URL || 'https://your-backend-api.vercel.app', 
+  // In production, the URI is managed by the backend server environment variables
   DATABASE_URI: "postgresql://neondb_owner:npg_9SkQWbjABi6o@ep-jolly-shadow-aix9j6ig-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
   MODE: IS_PROD ? 'PRODUCTION' : 'SIMULATION'
 };
@@ -32,28 +34,31 @@ export class ExternalDB {
   }
 
   public getTargetUri() {
-    return CONFIG.DATABASE_URI;
+    // Masking sensitive info for UI display
+    return CONFIG.DATABASE_URI.replace(/:[^:@]+@/, ":****@");
   }
 
   /**
-   * Core Fetch Wrapper - Prepared for the backend API linked to Neon
+   * Core Fetch Wrapper
+   * In a live app, the Frontend sends requests to your API project,
+   * and the API project talks to the Neon PostgreSQL database.
    */
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
     if (this.mode === 'SIMULATION') return null;
 
     try {
-      const response = await fetch(`${CONFIG.API_URL}${endpoint}`, {
+      const response = await fetch(`${CONFIG.API_URL}/api${endpoint}`, {
         ...options,
         headers: {
           'Content-Type': 'application/json',
-          'X-Database-Target': 'Neon-Postgres',
+          'Authorization': `Bearer ${process.env.SESSION_TOKEN || ''}`,
           ...options.headers,
         },
       });
       if (!response.ok) throw new Error(`DB_ERROR: ${response.statusText}`);
       return await response.json();
     } catch (error) {
-      console.warn("Neon Cloud Sync Pending. Ensure backend is deployed to handle Postgres traffic.");
+      console.error("Live Cloud Error:", error);
       return null;
     }
   }
