@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { UserSquare2, TrendingUp, Award, Clock, Edit2, Trash2, UserPlus, Search, Phone, Mail, MapPin, Check, X, ShieldAlert, DollarSign, Calendar, Percent } from 'lucide-react';
+import { UserSquare2, TrendingUp, Award, Clock, Edit2, Trash2, UserPlus, Search, Phone, Mail, MapPin, Check, X, ShieldAlert, DollarSign, Calendar, Percent, Calculator } from 'lucide-react';
 import { Agent, Role } from '../types';
 import { prisma } from '../services/prisma';
 
@@ -21,7 +21,7 @@ const AgentModule: React.FC<AgentModuleProps> = ({ agents, onEdit, onDelete, onA
     name: '', email: '', phone: '', region: '', role: 'Wholesale Liaison',
     employeeId: '', hireDate: new Date().toISOString().split('T')[0],
     emergencyContact: '', baseSalary: 3000,
-    commissionRate: 10,
+    commissionRate: 2, // Default to 2% as per new policy
     weeklyTarget: 500,
     monthlyTarget: 2000
   });
@@ -36,7 +36,7 @@ const AgentModule: React.FC<AgentModuleProps> = ({ agents, onEdit, onDelete, onA
       name: '', email: '', phone: '', region: '', role: 'Wholesale Liaison',
       employeeId: '', hireDate: new Date().toISOString().split('T')[0],
       emergencyContact: '', baseSalary: 3000,
-      commissionRate: 10,
+      commissionRate: 2,
       weeklyTarget: 500,
       monthlyTarget: 2000
     });
@@ -105,7 +105,7 @@ const AgentModule: React.FC<AgentModuleProps> = ({ agents, onEdit, onDelete, onA
               </div>
               <div className="space-y-1">
                 <label className="text-[9px] font-black text-swift-green uppercase tracking-widest ml-1 flex items-center gap-1">
-                  <Percent size={10} /> Commission Rate (%)
+                   Comm. Rate (%)
                 </label>
                 <input 
                   type="number" 
@@ -113,11 +113,17 @@ const AgentModule: React.FC<AgentModuleProps> = ({ agents, onEdit, onDelete, onA
                   value={formData.commissionRate} 
                   onChange={e => setFormData({...formData, commissionRate: Number(e.target.value)})} 
                   className="w-full bg-green-50 border border-green-100 rounded-xl px-4 py-3 font-black text-swift-green outline-none focus:ring-2 focus:ring-swift-green" 
-                  placeholder="10.0"
+                  placeholder="2.0"
                   required 
                 />
               </div>
             </div>
+            
+            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 flex items-center gap-4">
+               <Calculator size={20} className="text-swift-navy" />
+               <p className="text-xs font-bold text-slate-500">System Note: Commissions will be applied at this rate against <span className="text-swift-navy font-black">30% of Gross Revenue</span> per transaction.</p>
+            </div>
+
             <button type="submit" className="w-full py-4 bg-swift-navy text-white rounded-xl font-black uppercase tracking-widest hover:bg-swift-green transition shadow-xl">
               Activate Sales Force Personnel
             </button>
@@ -156,7 +162,7 @@ const AgentModule: React.FC<AgentModuleProps> = ({ agents, onEdit, onDelete, onA
               <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1 border border-slate-100">
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Comm. Tier</span>
                 <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                  <Percent size={12} className="text-swift-navy" /> {agent.commissionRate}% Dynamic
+                  <Percent size={12} className="text-swift-navy" /> {agent.commissionRate}% of 30% Rev
                 </div>
               </div>
               <div className="bg-slate-50 p-4 rounded-2xl flex flex-col gap-1 border border-slate-100 col-span-2">

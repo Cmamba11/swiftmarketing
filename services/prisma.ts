@@ -1,8 +1,9 @@
 
-import { Partner, Agent, CallReport, Order, Sale, InventoryItem, InventoryLog, User, Role, SystemConfig, PartnerType, VisitOutcome, LogisticsReport } from '../types';
+import { Partner, Agent, CallReport, Order, Sale, InventoryItem, InventoryLog, User, Role, SystemConfig, PartnerType, VisitOutcome, LogisticsReport, WorkOrder } from '../types';
 
 const generateId = () => Math.random().toString(36).substring(2, 15);
 const generateInternalOrderId = () => `ORD-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+const generateWorkOrderId = () => `WO-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
 const DB_KEY = 'swift_industrial_db';
 
@@ -11,6 +12,7 @@ interface DBState {
   agents: Agent[];
   calls: CallReport[];
   orders: Order[];
+  workOrders: WorkOrder[];
   sales: Sale[];
   inventory: InventoryItem[];
   inventoryLogs: InventoryLog[];
@@ -39,6 +41,7 @@ const seed = (): DBState => {
     agents: [],
     calls: [],
     orders: [],
+    workOrders: [],
     sales: [],
     inventory: [],
     inventoryLogs: [],
@@ -194,6 +197,59 @@ export const prisma = {
       saveRaw(state);
     }
   },
+  workOrder: {
+    findMany: () => getRaw().workOrders,
+    issue: (orderId: string, priority: 'NORMAL' | 'HIGH' | 'CRITICAL' = 'NORMAL') => {
+      const state = getRaw();
+      const order = state.orders.find(o => o.id === orderId);
+      if (!order) throw new Error("Order not found");
+      
+      const newWO: WorkOrder = {
+        id: generateId(),
+        orderId: order.id,
+        internalId: generateWorkOrderId(),
+        status: 'PENDING',
+        priority,
+        notes: `Production ticket for Order ${order.internalId}`
+      };
+      
+      order.status = 'AWAITING_PROD';
+      state.workOrders.push(newWO);
+      saveRaw(state);
+      return newWO;
+    },
+    updateStatus: (id: string, status: 'IN_PROD' | 'COMPLETED') => {
+      const state = getRaw();
+      const wo = state.workOrders.find(w => w.id === id);
+      if (!wo) throw new Error("Work order not found");
+      
+      const order = state.orders.find(o => o.id === wo.orderId);
+      wo.status = status;
+      
+      if (status === 'IN_PROD') {
+        wo.startDate = new Date().toISOString();
+        if (order) order.status = 'IN_PROD';
+      } else if (status === 'COMPLETED') {
+        wo.completionDate = new Date().toISOString();
+        if (order) {
+          order.status = 'READY_FOR_DISPATCH';
+          // AUTO-REPLENISH INVENTORY
+          order.items.forEach(item => {
+            const partnerId = order.partnerId || null;
+            prisma.inventory.create({
+              partnerId,
+              productName: item.productName,
+              productType: item.productType,
+              quantity: item.quantity,
+              totalKg: item.totalKg,
+              unit: item.productType === 'ROLLER' ? 'rolls' : 'bags'
+            });
+          });
+        }
+      }
+      saveRaw(state);
+    }
+  },
   order: {
     findMany: () => getRaw().orders,
     create: (data: any) => {
@@ -207,15 +263,39 @@ export const prisma = {
       state.orders.push(newOrder);
       saveRaw(state);
       return newOrder;
+    },
+    updatePendingDispatch: (id: string, data: any) => {
+      const state = getRaw();
+      const order = state.orders.find(o => o.id === id);
+      if (order) {
+        order.pendingDispatch = {
+          ...(order.pendingDispatch || { 
+            systemOwnerApproved: false, 
+            accountOfficerApproved: false, 
+            inventoryItemId: '', 
+            totalKg: 0, 
+            volume: 0, 
+            notes: '' 
+          }),
+          ...data
+        };
+        saveRaw(state);
+      }
     }
   },
   sale: {
     findMany: () => getRaw().sales,
     create: (data: any) => {
       const state = getRaw();
+      const targetOrder = state.orders.find(o => o.id === data.orderId);
+      
+      // HARD CHECK: Cannot log sale unless production is completed
+      if (targetOrder && targetOrder.status !== 'READY_FOR_DISPATCH' && targetOrder.status !== 'PARTIALLY_FULFILLED' && targetOrder.status !== 'FULFILLED') {
+        throw new Error("PROHIBITED: Cannot dispatch. Production is not complete for this order.");
+      }
+
       const newSale = { ...data, id: generateId(), date: new Date().toISOString() };
       const invItem = state.inventory.find(i => i.id === data.inventoryItemId);
-      const parentOrder = state.orders.find(o => o.id === data.orderId);
       
       const dispatchWeight = Number(data.totalKg || 0);
       const dispatchUnits = Number(data.volume || 0);
@@ -238,24 +318,25 @@ export const prisma = {
         });
 
         // UPDATE ORDER STATUS
-        if (parentOrder) {
+        if (targetOrder) {
           const currentSaleValue = invItem.productType === 'ROLLER' 
             ? (dispatchWeight * data.unitPrice) 
             : (dispatchUnits * data.unitPrice);
             
-          // If this sale covers or exceeds 90% of order value, mark fulfilled. Else partially.
           const totalSalesForThisOrder = state.sales
-            .filter(s => s.orderId === parentOrder.id)
+            .filter(s => s.orderId === targetOrder.id)
             .reduce((acc, s) => {
                 const sInv = state.inventory.find(inv => inv.id === s.inventoryItemId);
                 return acc + (sInv?.productType === 'ROLLER' ? (s.totalKg * s.unitPrice) : (s.volume * s.unitPrice));
             }, 0) + currentSaleValue;
 
-          if (totalSalesForThisOrder >= parentOrder.totalValue * 0.95) {
-            parentOrder.status = 'FULFILLED';
+          if (totalSalesForThisOrder >= targetOrder.totalValue * 0.95) {
+            targetOrder.status = 'FULFILLED';
           } else {
-            parentOrder.status = 'PARTIALLY_FULFILLED';
+            targetOrder.status = 'PARTIALLY_FULFILLED';
           }
+          // CLEAR PENDING DISPATCH DATA ONCE COMMITTED
+          delete targetOrder.pendingDispatch;
         }
       } else {
         throw new Error("Insufficient stock volume for this dispatch.");

@@ -1,8 +1,8 @@
 
 import React, { useState, useMemo } from 'react';
-import { Search, Edit2, Trash2, MapPin, Handshake, Plus, X, Globe, FileText, Wallet, PackageOpen, Weight, UserCheck, DollarSign, History, ArrowUp, ArrowDown } from 'lucide-react';
+import { Search, Edit2, Trash2, MapPin, Handshake, Plus, X, Globe, FileText, Wallet, PackageOpen, Weight, UserCheck, DollarSign, History, ArrowUp, ArrowDown, RefreshCw } from 'lucide-react';
 import { Partner, PartnerType, Role, InventoryItem, Agent } from '../types';
-import { prisma } from '../services/prisma';
+import { api } from '../services/api';
 
 interface PartnerModuleProps {
   partners: Partner[];
@@ -18,7 +18,9 @@ const PartnerModule: React.FC<PartnerModuleProps> = ({ partners, inventory, agen
   const [showAdd, setShowAdd] = useState(false);
   const [showHistory, setShowHistory] = useState<string | null>(null);
   const [showAdjust, setShowAdjust] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [adjustData, setAdjustData] = useState({ change: 0, notes: '', type: 'RESTOCK' as 'RESTOCK' | 'ADJUSTMENT' | 'REDUCTION' });
+  const [historyLogs, setHistoryLogs] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
     name: '', email: '', phone: '', contactPerson: '', location: '', address: '',
@@ -31,9 +33,10 @@ const PartnerModule: React.FC<PartnerModuleProps> = ({ partners, inventory, agen
   const canCreate = permissions?.isSystemAdmin || permissions?.canCreatePartners || !permissions;
   const canDelete = permissions?.isSystemAdmin || permissions?.canDeletePartners || !permissions;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    prisma.partner.create({ 
+    setIsProcessing(true);
+    await api.partners.create({ 
       ...formData,
       assignedAgentId: formData.assignedAgentId || 'unassigned',
       defaultRatePerKg: Number(formData.defaultRatePerKg)
@@ -46,28 +49,32 @@ const PartnerModule: React.FC<PartnerModuleProps> = ({ partners, inventory, agen
       defaultRatePerKg: 15.5
     });
     setShowAdd(false);
+    setIsProcessing(false);
   };
 
-  const handleAdjust = (e: React.FormEvent) => {
+  const handleAdjust = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!showAdjust) return;
+    setIsProcessing(true);
     try {
       const change = adjustData.type === 'REDUCTION' ? -Math.abs(adjustData.change) : Number(adjustData.change);
-      prisma.inventory.adjust(showAdjust, change, adjustData.type, adjustData.notes);
+      await api.inventory.adjust(showAdjust, change, adjustData.type, adjustData.notes);
       setShowAdjust(null);
       setAdjustData({ change: 0, notes: '', type: 'RESTOCK' });
     } catch (err: any) {
       alert(err.message);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  const currentHistoryLogs = useMemo(() => {
-    if (!showHistory) return [];
-    return prisma.inventory.findLogs(showHistory);
-  }, [showHistory]);
+  const loadHistory = async (itemId: string) => {
+    setShowHistory(itemId);
+    const logs = await api.inventory.getLogs(itemId);
+    setHistoryLogs(logs);
+  };
 
   const currentItemName = useMemo(() => {
-    if (!showHistory && !showAdjust) return "";
     const id = showHistory || showAdjust;
     return inventory.find(i => i.id === id)?.productName || "";
   }, [showHistory, showAdjust, inventory]);
@@ -75,7 +82,7 @@ const PartnerModule: React.FC<PartnerModuleProps> = ({ partners, inventory, agen
   const filteredPartners = partners.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       <div className="bg-white p-5 rounded-3xl border border-slate-200 flex flex-col md:flex-row gap-4 items-center justify-between shadow-sm">
         <div className="relative w-full md:w-96">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -89,7 +96,8 @@ const PartnerModule: React.FC<PartnerModuleProps> = ({ partners, inventory, agen
       </div>
 
       {showAdd && (
-        <form onSubmit={handleSubmit} className="bg-white p-10 rounded-[3rem] border-2 border-[#1A2B6D] shadow-2xl animate-in slide-in-from-top-4 space-y-6">
+        <form onSubmit={handleSubmit} className="bg-white p-10 rounded-[3rem] border-2 border-[#1A2B6D] shadow-2xl animate-in slide-in-from-top-4 space-y-6 relative overflow-hidden">
+          {isProcessing && <div className="absolute inset-0 bg-white/80 z-20 flex items-center justify-center backdrop-blur-sm"><RefreshCw className="animate-spin text-swift-navy" size={48} /></div>}
           <div className="flex items-center gap-4 border-b border-slate-100 pb-4 mb-6">
             <Handshake size={32} className="text-[#E31E24]" />
             <h3 className="text-2xl font-black uppercase italic tracking-tighter text-[#1A2B6D]">Industrial Partner Enrollment</h3>
@@ -110,7 +118,7 @@ const PartnerModule: React.FC<PartnerModuleProps> = ({ partners, inventory, agen
                 value={formData.assignedAgentId} 
                 onChange={e => setFormData({...formData, assignedAgentId: e.target.value})} 
               >
-                <option value="">Select Sales Agent (Optional during setup)...</option>
+                <option value="">Select Sales Agent...</option>
                 {agents.map(agent => (
                   <option key={agent.id} value={agent.id}>{agent.name} ({agent.region})</option>
                 ))}
@@ -138,7 +146,7 @@ const PartnerModule: React.FC<PartnerModuleProps> = ({ partners, inventory, agen
             </div>
           </div>
           
-          <button type="submit" className="w-full py-6 bg-[#E31E24] text-white rounded-[2rem] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-[#1A2B6D] transition-all active:scale-95">
+          <button type="submit" disabled={isProcessing} className="w-full py-6 bg-[#E31E24] text-white rounded-[2rem] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-[#1A2B6D] transition-all active:scale-95 disabled:bg-slate-400">
             Authorize Partner & Establish Linkage
           </button>
         </form>
@@ -183,7 +191,7 @@ const PartnerModule: React.FC<PartnerModuleProps> = ({ partners, inventory, agen
                         <div className="flex flex-col">
                            <span className="text-xs font-black uppercase italic text-slate-700 tracking-tight">{asset.productName}</span>
                            <div className="flex gap-2 mt-1">
-                              <button onClick={() => setShowHistory(asset.id)} className="text-[8px] font-black uppercase text-slate-300 hover:text-[#1A2B6D] transition flex items-center gap-1"><History size={10}/> Trace</button>
+                              <button onClick={() => loadHistory(asset.id)} className="text-[8px] font-black uppercase text-slate-300 hover:text-[#1A2B6D] transition flex items-center gap-1"><History size={10}/> Trace</button>
                               <button onClick={() => setShowAdjust(asset.id)} className="text-[8px] font-black uppercase text-slate-300 hover:text-[#E31E24] transition flex items-center gap-1"><Plus size={10}/> Adjust</button>
                            </div>
                         </div>
@@ -216,10 +224,10 @@ const PartnerModule: React.FC<PartnerModuleProps> = ({ partners, inventory, agen
         })}
       </div>
 
-      {/* ADJUSTMENT MODAL */}
       {showAdjust && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[3rem] w-full max-w-lg p-10 shadow-3xl animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-[3rem] w-full max-w-lg p-10 shadow-3xl animate-in zoom-in-95 duration-200 relative overflow-hidden">
+            {isProcessing && <div className="absolute inset-0 bg-white/80 z-20 flex items-center justify-center backdrop-blur-sm"><RefreshCw className="animate-spin text-swift-navy" size={48} /></div>}
             <h3 className="text-2xl font-black text-[#1A2B6D] mb-2 uppercase italic tracking-tighter">Manual Stock Adjustment</h3>
             <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-8">Asset SKU: {currentItemName}</p>
             <form onSubmit={handleAdjust} className="space-y-6">
@@ -231,14 +239,13 @@ const PartnerModule: React.FC<PartnerModuleProps> = ({ partners, inventory, agen
               <textarea value={adjustData.notes} onChange={e => setAdjustData({...adjustData, notes: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium h-24 resize-none" placeholder="Reason for adjustment..." required />
               <div className="flex gap-4">
                 <button type="button" onClick={() => setShowAdjust(null)} className="flex-1 py-4 bg-slate-100 text-slate-400 rounded-2xl font-black uppercase tracking-widest">Abort</button>
-                <button type="submit" className="flex-1 py-4 bg-[#1A2B6D] text-white rounded-2xl font-black uppercase tracking-widest">Commit Adjustment</button>
+                <button type="submit" disabled={isProcessing} className="flex-1 py-4 bg-[#1A2B6D] text-white rounded-2xl font-black uppercase tracking-widest disabled:opacity-50">Commit Adjustment</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* HISTORY MODAL (TRACE) */}
       {showHistory && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-[3rem] w-full max-w-2xl p-10 shadow-3xl flex flex-col max-h-[80vh]">
@@ -250,7 +257,7 @@ const PartnerModule: React.FC<PartnerModuleProps> = ({ partners, inventory, agen
               <button onClick={() => setShowHistory(null)} className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-[#E31E24] transition"><X size={20}/></button>
             </div>
             <div className="flex-1 overflow-y-auto space-y-4 pr-4">
-              {currentHistoryLogs.length > 0 ? currentHistoryLogs.sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map(log => (
+              {historyLogs.length > 0 ? historyLogs.sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map(log => (
                 <div key={log.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center group">
                   <div className="flex items-center gap-4">
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${log.change > 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>

@@ -1,11 +1,13 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   LayoutDashboard, Handshake, UserSquare2, Menu, X, Package, 
-  Code, PhoneCall, Database, Search, Zap, LogOut, ShieldAlert, UserPlus, Trash2, Edit3, Save, 
+  PhoneCall, Database, Search, Zap, LogOut, ShieldAlert, UserPlus, Trash2, Edit3, Save, 
   BarChart3, TrendingUp, Target, Award, ShieldCheck, Key, Rocket, Settings2, Plus, Check, Shield, User as UserIcon, Lock,
-  ShoppingCart, ClipboardList, Cloud, CloudOff, RefreshCw, Eye, EyeOff, Info, Briefcase, ReceiptText, Fingerprint, Sparkles, BrainCircuit
+  ShoppingCart, ClipboardList, Cloud, CloudOff, RefreshCw, Eye, EyeOff, Info, Briefcase, ReceiptText, Fingerprint, Sparkles, Hammer, Server
 } from 'lucide-react';
-import { ViewState, Agent, Partner, CallReport, User as UserType, Role, InventoryItem, Order, Sale } from './types';
+import { ViewState, Agent, Partner, CallReport, User as UserType, Role, InventoryItem, Order, Sale, WorkOrder } from './types';
+import { api } from './services/api';
 import { prisma } from './services/prisma';
 
 // Import Views
@@ -15,6 +17,7 @@ import AgentModule from './components/AgentModule';
 import ProductionModule from './components/ProductionModule';
 import CallReportModule from './components/CallReportModule';
 import OrderModule from './components/OrderModule';
+import WorkOrderModule from './components/WorkOrderModule';
 import SalesModule from './components/SalesModule';
 import PortfolioView from './components/PortfolioView';
 import PrismaExplorer from './components/PrismaExplorer';
@@ -56,7 +59,7 @@ const UserManagementView = ({ users, roles, agents, onDelete, onCreate }: { user
   };
   
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-32">
       <div className="bg-swift-navy rounded-[3rem] p-10 text-white shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-10"><UserIcon size={200} /></div>
         <div className="relative z-10">
@@ -160,7 +163,7 @@ const RoleManagementView = ({ roles, onDelete, onCreate }: { roles: Role[], onDe
   };
   
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-32">
       <div className="bg-swift-navy rounded-[3rem] p-10 text-white shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-10"><Shield size={200} /></div>
         <div className="relative z-10">
@@ -221,8 +224,9 @@ const LoginView = ({ onLogin, onBootstrap }: { onLogin: (user: UserType) => void
   const [loading, setLoading] = useState(false);
 
   useEffect(() => { 
-    const users = prisma.user.findMany();
-    if (users.length === 0) setIsBootstrap(true); 
+    api.users.getAll().then(users => {
+      if (users.length === 0) setIsBootstrap(true);
+    });
   }, []);
 
   const handleAction = async (e: React.FormEvent) => {
@@ -238,7 +242,7 @@ const LoginView = ({ onLogin, onBootstrap }: { onLogin: (user: UserType) => void
           return;
         }
 
-        const adminRole = prisma.role.create({ 
+        const adminRole = await api.roles.create({ 
           name: 'System Owner', 
           description: 'Primary Administrative Control Profile', 
           isSystemAdmin: true, 
@@ -250,11 +254,12 @@ const LoginView = ({ onLogin, onBootstrap }: { onLogin: (user: UserType) => void
           canViewSecurity: true, canManageUsers: true, canManageRoles: true
         });
 
-        const newUser = prisma.user.create({ username, password, name, roleId: adminRole.id });
+        const newUser = await api.users.create({ username, password, name, roleId: adminRole.id });
         onBootstrap();
         onLogin(newUser);
       } else {
-        const user = prisma.user.findUnique({ where: { username } });
+        const users = await api.users.getAll();
+        const user = users.find(u => u.username === username);
         if (user && user.password === password) {
           onLogin(user);
         } else {
@@ -341,12 +346,14 @@ const App: React.FC = () => {
   const [activeView, setActiveView] = useState<ViewState>('DASHBOARD');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   
   const [dbData, setDbData] = useState({
     partners: [] as Partner[],
     agents: [] as Agent[],
     calls: [] as CallReport[],
     orders: [] as Order[],
+    workOrders: [] as WorkOrder[],
     sales: [] as Sale[],
     inventory: [] as InventoryItem[],
     users: [] as UserType[],
@@ -354,18 +361,25 @@ const App: React.FC = () => {
     config: prisma.config.get()
   });
 
-  const fetchData = useCallback(() => {
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    const [partners, agents, calls, orders, workOrders, sales, inventory, users, roles] = await Promise.all([
+      api.partners.getAll(),
+      api.agents.getAll(),
+      api.calls.getAll(),
+      api.orders.getAll(),
+      api.workOrders.getAll(),
+      api.sales.getAll(),
+      api.inventory.getAll(),
+      api.users.getAll(),
+      api.roles.getAll(),
+    ]);
+
     setDbData({
-      partners: prisma.partner.findMany(),
-      agents: prisma.salesAgent.findMany(),
-      calls: prisma.callReport.findMany(),
-      orders: prisma.order.findMany(),
-      sales: prisma.sale.findMany(),
-      inventory: prisma.inventory.findMany(),
-      users: prisma.user.findMany(),
-      roles: prisma.role.findMany(),
+      partners, agents, calls, orders, workOrders, sales, inventory, users, roles,
       config: prisma.config.get()
     });
+    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -398,8 +412,8 @@ const App: React.FC = () => {
         <div className="flex items-center gap-4 group">
           <SwiftLogo size="sm" />
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${prisma.dbInfo.getMode() === 'PRODUCTION' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
-            <Cloud size={14} className={prisma.dbInfo.getMode() === 'PRODUCTION' ? 'animate-pulse' : ''} />
-            {prisma.dbInfo.getMode() === 'PRODUCTION' ? 'Cloud Link Active' : 'Simulation Mode'}
+            {isLoading ? <RefreshCw size={14} className="animate-spin text-blue-500" /> : <Server size={14} className={prisma.dbInfo.getMode() === 'PRODUCTION' ? 'text-emerald-500 animate-pulse' : 'text-amber-500'} />}
+            {isLoading ? 'Syncing...' : (prisma.dbInfo.getMode() === 'PRODUCTION' ? 'Neon Cloud Linked' : 'Simulation Mode')}
           </div>
         </div>
         <div className="flex items-center gap-6">
@@ -416,17 +430,18 @@ const App: React.FC = () => {
           <nav className="flex-1 p-3 space-y-2 mt-4">
             {[
               { id: 'DASHBOARD', label: 'Overview', icon: LayoutDashboard, perm: true },
-              { id: 'AI_ARCHITECT', label: 'AI Strategy', icon: BrainCircuit, perm: isAdmin },
               { id: 'PORTFOLIO', label: 'My Portfolio', icon: Briefcase, perm: true },
               { id: 'PARTNERS', label: 'Partner Hub', icon: Handshake, perm: hasPerm('canViewPartners') },
               { id: 'ORDERS', label: 'Order Hub', icon: ShoppingCart, perm: hasPerm('canViewOrders') },
+              { id: 'WORK_ORDERS', label: 'Shop Floor', icon: Hammer, perm: hasPerm('canViewInventory') },
               { id: 'SALES', label: 'Sales Ledger', icon: ReceiptText, perm: hasPerm('canViewOrders') },
               { id: 'AGENTS', label: 'Sales Force', icon: UserSquare2, perm: hasPerm('canViewAgents') },
               { id: 'CALL_REPORTS', label: 'Interaction Log', icon: PhoneCall, perm: hasPerm('canViewCalls') },
-              { id: 'PRODUCTION', label: 'Production', icon: Database, perm: hasPerm('canViewInventory') },
-              { id: 'PRISMA_SCHEMA', label: 'DB Schema', icon: Code, perm: hasPerm('canViewSecurity') },
+              { id: 'PRODUCTION', label: 'Inventory', icon: Database, perm: hasPerm('canViewInventory') },
               { id: 'USER_MANAGEMENT', label: 'Personnel', icon: UserIcon, perm: hasPerm('canManageUsers') },
               { id: 'ROLE_MANAGEMENT', label: 'Security', icon: Shield, perm: hasPerm('canManageRoles') },
+              { id: 'AI_ARCHITECT', label: 'Strategy AI', icon: Sparkles, perm: isAdmin },
+              { id: 'PRISMA_SCHEMA', label: 'DB Architect', icon: Server, perm: isAdmin },
             ].map(item => item.perm && (
               <button key={item.id} onClick={() => setActiveView(item.id as ViewState)}
                 className={`flex items-center w-full gap-4 px-4 py-3.5 rounded-2xl transition-all group ${activeView === item.id ? 'bg-swift-green text-white shadow-lg' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
@@ -441,19 +456,20 @@ const App: React.FC = () => {
           </button>
         </aside>
         
-        <main className="flex-1 overflow-y-auto bg-slate-50 p-10">
+        <main className="flex-1 overflow-y-auto bg-slate-50 p-10 pb-32">
             {activeView === 'DASHBOARD' && <DashboardView partners={dbData.partners} agents={dbData.agents} inventory={dbData.inventory} orders={dbData.orders} />}
-            {activeView === 'AI_ARCHITECT' && <AIArchitect currentConfig={dbData.config} />}
             {activeView === 'PORTFOLIO' && <PortfolioView currentUser={currentUser} agents={dbData.agents} partners={dbData.partners} orders={dbData.orders} sales={dbData.sales} reports={dbData.calls} inventory={dbData.inventory} isAdmin={isAdmin} />}
-            {activeView === 'PARTNERS' && <PartnerModule partners={dbData.partners} inventory={dbData.inventory} agents={dbData.agents} onDelete={id => prisma.partner.delete(id)} searchTerm={searchTerm} onSearchChange={setSearchTerm} permissions={currentUserRole} />}
-            {activeView === 'ORDERS' && <OrderModule orders={dbData.orders} partners={dbData.partners} inventory={dbData.inventory} currentUser={currentUser} />}
+            {activeView === 'PARTNERS' && <PartnerModule partners={dbData.partners} inventory={dbData.inventory} agents={dbData.agents} onDelete={id => api.partners.delete(id)} searchTerm={searchTerm} onSearchChange={setSearchTerm} permissions={currentUserRole} />}
+            {activeView === 'ORDERS' && <OrderModule orders={dbData.orders} partners={dbData.partners} inventory={dbData.inventory} currentUser={currentUser} roles={dbData.roles} />}
+            {activeView === 'WORK_ORDERS' && <WorkOrderModule workOrders={dbData.workOrders} orders={dbData.orders} partners={dbData.partners} permissions={currentUserRole} />}
             {activeView === 'SALES' && <SalesModule sales={dbData.sales} orders={dbData.orders} partners={dbData.partners} inventory={dbData.inventory} agents={dbData.agents} currentUser={currentUser} />}
-            {activeView === 'AGENTS' && <AgentModule agents={dbData.agents} onDelete={id => prisma.salesAgent.delete(id)} searchTerm={searchTerm} onSearchChange={setSearchTerm} permissions={currentUserRole} onEdit={()=>{}} onAssignLead={()=>{}} onViewStats={()=>{}} />}
-            {activeView === 'PRODUCTION' && <ProductionModule partners={dbData.partners} inventory={dbData.inventory} onDelete={id => prisma.inventory.delete(id)} permissions={currentUserRole} />}
+            {activeView === 'AGENTS' && <AgentModule agents={dbData.agents} onDelete={id => api.agents.delete(id)} searchTerm={searchTerm} onSearchChange={setSearchTerm} permissions={currentUserRole} onEdit={()=>{}} onAssignLead={()=>{}} onViewStats={()=>{}} />}
+            {activeView === 'PRODUCTION' && <ProductionModule partners={dbData.partners} inventory={dbData.inventory} permissions={currentUserRole} onDelete={id => api.inventory.delete(id)} />}
             {activeView === 'CALL_REPORTS' && <CallReportModule reports={dbData.calls} customers={dbData.partners} agents={dbData.agents} onDelete={()=>{}} onEdit={()=>{}} searchTerm={searchTerm} onSearchChange={setSearchTerm} permissions={currentUserRole} />}
+            {activeView === 'ROLE_MANAGEMENT' && <RoleManagementView roles={dbData.roles} onDelete={id => api.roles.delete(id)} onCreate={data => api.roles.create(data)} />}
+            {activeView === 'USER_MANAGEMENT' && <UserManagementView users={dbData.users} roles={dbData.roles} agents={dbData.agents} onDelete={id => api.users.delete(id)} onCreate={data => api.users.create(data)} />}
             {activeView === 'PRISMA_SCHEMA' && <PrismaExplorer />}
-            {activeView === 'ROLE_MANAGEMENT' && <RoleManagementView roles={dbData.roles} onDelete={id => prisma.role.delete(id)} onCreate={data => prisma.role.create(data)} />}
-            {activeView === 'USER_MANAGEMENT' && <UserManagementView users={dbData.users} roles={dbData.roles} agents={dbData.agents} onDelete={id => prisma.user.delete(id)} onCreate={data => prisma.user.create(data)} />}
+            {activeView === 'AI_ARCHITECT' && <AIArchitect currentConfig={dbData.config} />}
         </main>
       </div>
     </div>

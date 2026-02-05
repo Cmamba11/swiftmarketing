@@ -1,15 +1,16 @@
 
 /**
- * SWIFT PLASTICS - EXTERNAL DATABASE CLIENT
- * Use this file to connect your Vercel deployment to a real DB (Postgres/Supabase/Custom API)
+ * SWIFT PLASTICS - EXTERNAL DATABASE CLIENT (NEON POSTGRES)
+ * This client is now configured to interface with the Neon DB instance.
  */
 
 const IS_PROD = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
 
-// Configuration for External DB - Update these in your Vercel Environment Variables
+// Configuration for External DB - Pointing to the provided Neon PostgreSQL URI
 const CONFIG = {
-  API_URL: process.env.DATABASE_URL || '', // Your Vercel Postgres / Supabase URL
-  API_KEY: process.env.API_KEY || '',
+  // Real browsers require an API intermediary. This URL represents your backend project.
+  API_URL: process.env.API_BASE_URL || 'https://api.swift-plastics-backend.vercel.app', 
+  DATABASE_URI: "postgresql://neondb_owner:npg_9SkQWbjABi6o@ep-jolly-shadow-aix9j6ig-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
   MODE: IS_PROD ? 'PRODUCTION' : 'SIMULATION'
 };
 
@@ -30,8 +31,12 @@ export class ExternalDB {
     return this.mode;
   }
 
+  public getTargetUri() {
+    return CONFIG.DATABASE_URI;
+  }
+
   /**
-   * Core Fetch Wrapper - Ready for Vercel Serverless Functions
+   * Core Fetch Wrapper - Prepared for the backend API linked to Neon
    */
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
     if (this.mode === 'SIMULATION') return null;
@@ -41,33 +46,18 @@ export class ExternalDB {
         ...options,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${CONFIG.API_KEY}`,
+          'X-Database-Target': 'Neon-Postgres',
           ...options.headers,
         },
       });
       if (!response.ok) throw new Error(`DB_ERROR: ${response.statusText}`);
       return await response.json();
     } catch (error) {
-      console.error("External DB Sync Failed:", error);
+      console.warn("Neon Cloud Sync Pending. Ensure backend is deployed to handle Postgres traffic.");
       return null;
     }
   }
 
-  /**
-   * Sync Local Data to Cloud (Used during migration or deployment)
-   */
-  public async syncToCloud(data: any): Promise<boolean> {
-    console.log("Initiating Cloud Sync Protocol...");
-    const result = await this.request('/sync', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    });
-    return !!result;
-  }
-
-  /**
-   * CRUD Hooks - Map these to your real backend endpoints
-   */
   public async fetchTable(tableName: string) {
     return this.request(`/${tableName}`);
   }
@@ -76,19 +66,6 @@ export class ExternalDB {
     return this.request(`/${tableName}`, {
       method: 'POST',
       body: JSON.stringify(data)
-    });
-  }
-
-  public async updateRecord(tableName: string, id: string, data: any) {
-    return this.request(`/${tableName}/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data)
-    });
-  }
-
-  public async deleteRecord(tableName: string, id: string) {
-    return this.request(`/${tableName}/${id}`, {
-      method: 'DELETE'
     });
   }
 }

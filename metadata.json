@@ -3,5 +3,9 @@
   "description": "Custom management suite for Swift Plastics Inc., specialized in rollers and packing bag production.",
   "requestFramePermissions": [
     "geolocation"
-  ]
+  ],
+  "database": {
+    "provider": "postgresql",
+    "uri": "postgresql://neondb_owner:npg_9SkQWbjABi6o@ep-jolly-shadow-aix9j6ig-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+  }
 }

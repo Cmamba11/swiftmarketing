@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { Briefcase, Award, TrendingUp, Target, ShoppingCart, User, MapPin, PhoneCall, ReceiptText, BarChart3, Clock, DollarSign, Percent, ChevronRight, RefreshCw, ShieldCheck, UserCheck, Fingerprint, Handshake, BadgeDollarSign } from 'lucide-react';
+import { Briefcase, Award, TrendingUp, Target, ShoppingCart, User, MapPin, PhoneCall, ReceiptText, BarChart3, Clock, DollarSign, Percent, ChevronRight, RefreshCw, ShieldCheck, UserCheck, Fingerprint, Handshake, BadgeDollarSign, Calculator } from 'lucide-react';
 import { Agent, Partner, Order, Sale, CallReport, User as UserType, InventoryItem } from '../types';
 
 interface PortfolioViewProps {
@@ -40,7 +40,6 @@ const PortfolioView: React.FC<PortfolioViewProps> = ({ currentUser, agents, part
     if (!activeAgent || myPartners.length === 0) return [];
     
     const partnerIds = new Set(myPartners.map(p => p.id));
-    const agentCommRate = activeAgent.commissionRate || 2; // System default 2%
     
     const relevantSales = sales.filter(s => partnerIds.has(s.partnerId))
                                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -54,8 +53,9 @@ const PortfolioView: React.FC<PortfolioViewProps> = ({ currentUser, agents, part
         ? (sale.totalKg * sale.unitPrice)
         : (sale.volume * sale.unitPrice);
       
-      // Calculate 2% Commission from this specific revenue
-      const commissionValue = Number((revenueValue * (agentCommRate / 100)).toFixed(2));
+      // NEW POLICY: Commission is 2% taken from 30% of the revenue
+      const commissionableBase = revenueValue * 0.30;
+      const commissionValue = Number((commissionableBase * 0.02).toFixed(2));
 
       return {
         ...sale,
@@ -141,7 +141,7 @@ const PortfolioView: React.FC<PortfolioViewProps> = ({ currentUser, agents, part
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {[
           { label: 'Partner Gross Revenue', value: `$${totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-swift-navy', bg: 'bg-slate-100' },
-          { label: `Settled Commissions (${activeAgent.commissionRate}%)`, value: `$${totalCommission.toLocaleString()}`, icon: BadgeDollarSign, color: 'text-swift-green', bg: 'bg-emerald-50' },
+          { label: `Payout (2% of 30% Gross)`, value: `$${totalCommission.toLocaleString()}`, icon: BadgeDollarSign, color: 'text-swift-green', bg: 'bg-emerald-50' },
           { label: 'Assigned Entities', value: myPartners.length, icon: Handshake, color: 'text-blue-500', bg: 'bg-blue-50' },
           { label: 'Interaction Index', value: myCalls.length, icon: PhoneCall, color: 'text-purple-500', bg: 'bg-purple-50' },
         ].map((stat, i) => (
@@ -154,6 +154,18 @@ const PortfolioView: React.FC<PortfolioViewProps> = ({ currentUser, agents, part
             <p className="text-3xl font-black text-slate-900 italic tracking-tighter relative z-10 tabular-nums">{stat.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* CALCULATION LOGIC BANNER */}
+      <div className="bg-blue-50 border border-blue-100 p-6 rounded-[2rem] flex items-start gap-4">
+         <div className="p-3 bg-white rounded-2xl text-blue-600 shadow-sm"><Calculator size={20}/></div>
+         <div>
+            <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Commission Policy V4</h4>
+            <p className="text-blue-900/70 text-xs font-medium leading-relaxed">
+              Industrial Payouts are calculated as <span className="font-black">2%</span> of the <span className="font-black">30% Commissionable Portion</span> of Gross Partner Revenue. 
+              Effective rate across total revenue is 0.6%.
+            </p>
+         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -180,7 +192,7 @@ const PortfolioView: React.FC<PortfolioViewProps> = ({ currentUser, agents, part
                 </div>
                 <div className="text-right">
                   <p className="font-black text-swift-navy tracking-tighter text-xl italic tabular-nums">${sale.revenueValue.toLocaleString()}</p>
-                  <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Commission: +${sale.commissionValue.toLocaleString()}</p>
+                  <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Comm: +${sale.commissionValue.toLocaleString()}</p>
                 </div>
               </div>
             )) : (

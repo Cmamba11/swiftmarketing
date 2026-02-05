@@ -1,3 +1,4 @@
+
 export interface Role {
   id: string;
   name: string;
@@ -135,13 +136,14 @@ export interface OrderItem {
   fulfilledQuantity: number; 
 }
 
+// Fixed: Expanded Order status to include production and dispatch states needed by the UI
 export interface Order {
   id: string;
   partnerId?: string;
   guestCompanyName?: string; // Added for walk-in orders
   items: OrderItem[];
   orderDate: string;
-  status: 'PENDING' | 'FULFILLED' | 'CANCELLED' | 'PARTIALLY_FULFILLED';
+  status: 'PENDING' | 'AWAITING_PROD' | 'IN_PROD' | 'READY_FOR_DISPATCH' | 'FULFILLED' | 'CANCELLED' | 'PARTIALLY_FULFILLED';
   totalValue: number;
   internalId: string;
 }
@@ -193,4 +195,5 @@ export interface SystemConfig {
   lastUpdated: string;
 }
 
-export type ViewState = 'DASHBOARD' | 'PARTNERS' | 'AGENTS' | 'ORDERS' | 'SALES' | 'PRODUCTION' | 'CALL_REPORTS' | 'PORTFOLIO' | 'PRISMA_SCHEMA' | 'USER_MANAGEMENT' | 'ROLE_MANAGEMENT' | 'AI_ARCHITECT';
+// Fixed: Synced ViewState with App.tsx and root types.ts, including WORK_ORDERS
+export type ViewState = 'DASHBOARD' | 'PARTNERS' | 'AGENTS' | 'ORDERS' | 'WORK_ORDERS' | 'SALES' | 'PRODUCTION' | 'CALL_REPORTS' | 'PORTFOLIO' | 'PRISMA_SCHEMA' | 'USER_MANAGEMENT' | 'ROLE_MANAGEMENT' | 'AI_ARCHITECT';

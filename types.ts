@@ -1,3 +1,4 @@
+
 export interface Role {
   id: string;
   name: string;
@@ -140,9 +141,28 @@ export interface Order {
   guestCompanyName?: string;
   items: OrderItem[];
   orderDate: string;
-  status: 'PENDING' | 'FULFILLED' | 'CANCELLED' | 'PARTIALLY_FULFILLED';
+  status: 'PENDING' | 'AWAITING_PROD' | 'IN_PROD' | 'READY_FOR_DISPATCH' | 'FULFILLED' | 'CANCELLED' | 'PARTIALLY_FULFILLED';
   totalValue: number;
   internalId: string;
+  pendingDispatch?: {
+    systemOwnerApproved: boolean;
+    accountOfficerApproved: boolean;
+    inventoryItemId: string;
+    totalKg: number;
+    volume: number;
+    notes: string;
+  };
+}
+
+export interface WorkOrder {
+  id: string;
+  orderId: string;
+  internalId: string;
+  status: 'PENDING' | 'IN_PROD' | 'COMPLETED';
+  startDate?: string;
+  completionDate?: string;
+  priority: 'NORMAL' | 'HIGH' | 'CRITICAL';
+  notes: string;
 }
 
 export interface InventoryItem {
@@ -192,4 +212,5 @@ export interface SystemConfig {
   lastUpdated: string;
 }
 
-export type ViewState = 'DASHBOARD' | 'PARTNERS' | 'AGENTS' | 'ORDERS' | 'SALES' | 'PRODUCTION' | 'CALL_REPORTS' | 'PORTFOLIO' | 'PRISMA_SCHEMA' | 'USER_MANAGEMENT' | 'ROLE_MANAGEMENT' | 'AI_ARCHITECT';
+// Fixed: Added missing view state identifiers to resolve type overlap errors in App.tsx
+export type ViewState = 'DASHBOARD' | 'PARTNERS' | 'AGENTS' | 'ORDERS' | 'WORK_ORDERS' | 'SALES' | 'PRODUCTION' | 'CALL_REPORTS' | 'PORTFOLIO' | 'USER_MANAGEMENT' | 'ROLE_MANAGEMENT' | 'PRISMA_SCHEMA' | 'AI_ARCHITECT';
