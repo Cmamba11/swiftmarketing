@@ -1,87 +1,142 @@
 
 import { prisma } from './prisma';
 import { externalDb } from './database';
-import { Partner, Agent, Order, Sale, InventoryItem, CallReport, User, Role, WorkOrder } from '../types';
+import { Partner, Agent, Order, Sale, InventoryItem, CallReport, User, Role, WorkOrder, InventoryLog } from '../types';
 
 /**
  * API GATEWAY (Neon Postgres Bridge)
- * This service handles the switch between local simulation and live cloud data.
+ * This service acts as the 'Switchboard' - choosing between the Cloud Server 
+ * or Local Simulation based on connectivity.
  */
 
-const isLive = externalDb.getMode() === 'PRODUCTION';
-
-// Simulated latency for UI feel, removed in production for speed
-const delay = (ms: number = 300) => isLive ? Promise.resolve() : new Promise(res => setTimeout(res, ms));
-
-const logCloudActivity = (action: string, table: string) => {
-  if (isLive) {
-    console.debug(`[NEON-LIVE] ${action} -> ${table}`);
-  }
-};
-
-/**
- * IMPLEMENTATION NOTE:
- * When you deploy your backend project, each of these methods should
- * eventually use `externalDb.fetchTable` or `fetch()` instead of `prisma`.
- * For now, they use the optimized prisma simulation.
- */
+// Helper to decide if we use the server
+const useServer = () => externalDb.isOnline();
 
 export const api = {
   partners: {
-    getAll: async () => { 
-      await delay(); 
-      logCloudActivity('FETCH_ALL', 'partners');
+    getAll: async (): Promise<Partner[]> => { 
+      if (useServer()) return (await externalDb.fetchTable<Partner>('partners')) || [];
       return prisma.partner.findMany(); 
     },
-    create: async (data: any) => { 
-      await delay(); 
-      logCloudActivity('CREATE', 'partners');
+    create: async (data: any): Promise<Partner> => { 
+      if (useServer()) return (await externalDb.createRecord<Partner>('partners', data)) || prisma.partner.create(data);
       return prisma.partner.create(data); 
     },
-    delete: async (id: string) => { 
-      await delay(); 
-      logCloudActivity('DELETE', 'partners');
+    delete: async (id: string): Promise<void> => { 
+      if (useServer()) await externalDb.request(`/partners/${id}`, { method: 'DELETE' });
       return prisma.partner.delete(id); 
     },
   },
   agents: {
-    getAll: async () => { await delay(); return prisma.salesAgent.findMany(); },
-    create: async (data: any) => { await delay(); return prisma.salesAgent.create(data); },
-    delete: async (id: string) => { await delay(); return prisma.salesAgent.delete(id); },
+    getAll: async (): Promise<Agent[]> => { 
+      if (useServer()) return (await externalDb.fetchTable<Agent>('agents')) || [];
+      return prisma.salesAgent.findMany(); 
+    },
+    create: async (data: any): Promise<Agent> => { 
+      if (useServer()) return (await externalDb.createRecord<Agent>('agents', data)) || prisma.salesAgent.create(data);
+      return prisma.salesAgent.create(data); 
+    },
+    delete: async (id: string): Promise<void> => { 
+      if (useServer()) await externalDb.request(`/agents/${id}`, { method: 'DELETE' });
+      return prisma.salesAgent.delete(id); 
+    },
   },
   orders: {
-    getAll: async () => { await delay(); return prisma.order.findMany(); },
-    create: async (data: any) => { await delay(); return prisma.order.create(data); },
-    updatePending: async (id: string, data: any) => { await delay(100); return prisma.order.updatePendingDispatch(id, data); },
+    getAll: async (): Promise<Order[]> => { 
+      if (useServer()) return (await externalDb.fetchTable<Order>('orders')) || [];
+      return prisma.order.findMany(); 
+    },
+    create: async (data: any): Promise<Order> => { 
+      if (useServer()) return (await externalDb.createRecord<Order>('orders', data)) || prisma.order.create(data);
+      return prisma.order.create(data); 
+    },
+    updatePending: async (id: string, data: any): Promise<void> => { 
+      if (useServer()) {
+        await externalDb.request(`/orders/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ pendingDispatch: data })
+        });
+      }
+      return prisma.order.updatePendingDispatch(id, data); 
+    },
   },
   workOrders: {
-    getAll: async () => { await delay(); return prisma.workOrder.findMany(); },
-    issue: async (orderId: string) => { await delay(); return prisma.workOrder.issue(orderId); },
-    updateStatus: async (id: string, status: any) => { await delay(); return prisma.workOrder.updateStatus(id, status); },
+    getAll: async (): Promise<WorkOrder[]> => { 
+      if (useServer()) return (await externalDb.fetchTable<WorkOrder>('workOrders')) || []; 
+      return prisma.workOrder.findMany(); 
+    },
+    issue: async (orderId: string): Promise<WorkOrder> => { 
+      if (useServer()) return (await externalDb.createRecord<WorkOrder>('workOrders', { orderId, status: 'PENDING', priority: 'NORMAL' })) || prisma.workOrder.issue(orderId);
+      return prisma.workOrder.issue(orderId); 
+    },
+    updateStatus: async (id: string, status: any): Promise<void> => { 
+      if (useServer()) {
+        await externalDb.request(`/workOrders/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ status })
+        });
+      }
+      return prisma.workOrder.updateStatus(id, status); 
+    },
   },
   sales: {
-    getAll: async () => { await delay(); return prisma.sale.findMany(); },
-    create: async (data: any) => { await delay(); return prisma.sale.create(data); },
+    getAll: async (): Promise<Sale[]> => { 
+      if (useServer()) return (await externalDb.fetchTable<Sale>('sales')) || []; 
+      return prisma.sale.findMany(); 
+    },
+    create: async (data: any): Promise<Sale> => { 
+      if (useServer()) return (await externalDb.createRecord<Sale>('sales', data)) || prisma.sale.create(data); 
+      return prisma.sale.create(data); 
+    },
   },
   inventory: {
-    getAll: async () => { await delay(); return prisma.inventory.findMany(); },
-    create: async (data: any) => { await delay(); return prisma.inventory.create(data); },
-    adjust: async (id: string, change: number, type: string, notes: string) => { await delay(); return prisma.inventory.adjust(id, change, type, notes); },
-    getLogs: async (itemId: string) => { await delay(); return prisma.inventory.findLogs(itemId); },
-    delete: async (id: string) => { await delay(); return prisma.inventory.delete(id); },
+    getAll: async (): Promise<InventoryItem[]> => { 
+      if (useServer()) return (await externalDb.fetchTable<InventoryItem>('inventory')) || []; 
+      return prisma.inventory.findMany(); 
+    },
+    create: async (data: any): Promise<InventoryItem> => { 
+      if (useServer()) return (await externalDb.createRecord<InventoryItem>('inventory', data)) || prisma.inventory.create(data);
+      return prisma.inventory.create(data); 
+    },
+    adjust: async (id: string, change: number, type: string, notes: string): Promise<void> => { 
+      if (useServer()) {
+        await externalDb.request(`/inventory/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ quantityChange: change, type, notes })
+        });
+      }
+      return prisma.inventory.adjust(id, change, type, notes); 
+    },
+    getLogs: async (itemId: string): Promise<InventoryLog[]> => { 
+      if (useServer()) {
+        const logs = await externalDb.request<InventoryLog[]>(`/inventory/${itemId}/logs`);
+        if (logs) return logs;
+      }
+      return prisma.inventory.findLogs(itemId); 
+    },
+    delete: async (id: string): Promise<void> => { 
+      if (useServer()) await externalDb.request(`/inventory/${id}`, { method: 'DELETE' });
+      return prisma.inventory.delete(id); 
+    },
   },
   calls: {
-    getAll: async () => { await delay(); return prisma.callReport.findMany(); },
-    create: async (data: any) => { await delay(); return prisma.callReport.create(data); },
+    getAll: async (): Promise<CallReport[]> => { 
+      if (useServer()) return (await externalDb.fetchTable<CallReport>('calls')) || []; 
+      return prisma.callReport.findMany(); 
+    },
+    create: async (data: any): Promise<CallReport> => { 
+      if (useServer()) return (await externalDb.createRecord<CallReport>('calls', data)) || prisma.callReport.create(data); 
+      return prisma.callReport.create(data); 
+    },
   },
   users: {
-    getAll: async () => { await delay(); return prisma.user.findMany(); },
-    create: async (data: any) => { await delay(); return prisma.user.create(data); },
-    delete: async (id: string) => { await delay(); return prisma.user.delete(id); },
+    getAll: async () => prisma.user.findMany(),
+    create: async (data: any) => prisma.user.create(data),
+    delete: async (id: string) => prisma.user.delete(id),
   },
   roles: {
-    getAll: async () => { await delay(); return prisma.role.findMany(); },
-    create: async (data: any) => { await delay(); return prisma.role.create(data); },
-    delete: async (id: string) => { await delay(); return prisma.role.delete(id); },
+    getAll: async () => prisma.role.findMany(),
+    create: async (data: any) => prisma.role.create(data),
+    delete: async (id: string) => prisma.role.delete(id),
   }
 };

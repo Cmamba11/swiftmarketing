@@ -1,21 +1,25 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 
-export const fineTuneSystemParams = async (currentSettings: any, userGoal: string) => {
+export const fineTuneSystemParams = async (currentSettings: any, userGoal: string, focusArea: string) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-preview',
-    contents: `You are an Industrial Supply Chain & Manufacturing Architect for Swift Plastics Inc.
-    The user is implementing a strict "ORDER -> SALES -> PARTNER INVENTORY" system.
-    Goal: ${userGoal}
+    contents: `You are the Lead Systems Architect for Swift Plastics Inc. 
+    We are fine-tuning the Industrial OS based on our current roadmap.
     
-    Current System Context: ${JSON.stringify(currentSettings)}
+    FOCUS AREA: ${focusArea}
+    USER OBJECTIVE: ${userGoal}
+    CURRENT SYSTEM CONFIG: ${JSON.stringify(currentSettings)}
     
-    Provide a detailed optimization plan and a phased implementation roadmap.
-    1. Commission tiers based on fulfillment speed and target achievement.
-    2. Inventory thresholds for Partner Asset Pools (Rollers & Bags).
-    3. Metrics for Logistics-to-Revenue traceability.
-    4. A 3-step execution roadmap with clear milestones.`,
+    TASKS:
+    1. Analyze the current metrics.
+    2. Propose a specific numerical shift for Commission Rates and Logistics Thresholds.
+    3. Generate a 3-phase execution roadmap.
+    4. Provide a "Strategy Summary" for the board.
+    
+    CRITICAL: The logic must adhere to the "ORDER -> SALES -> PARTNER INVENTORY" loop.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -23,24 +27,28 @@ export const fineTuneSystemParams = async (currentSettings: any, userGoal: strin
         properties: {
           recommendedCommissionRate: { 
             type: Type.NUMBER,
-            description: "The optimized commission percentage."
+            description: "The optimized commission percentage (e.g., 2.5)."
           },
           targetEfficiencyMetric: { 
             type: Type.STRING,
-            description: "The primary KPI to focus on."
+            description: "A short, catchy KPI name for the dashboard."
           },
           customerSegmentationAdvice: { 
             type: Type.ARRAY,
             items: { type: Type.STRING },
-            description: "Strategies for partner management."
+            description: "Actionable steps for partner handling."
           },
           logisticsThreshold: { 
             type: Type.NUMBER,
-            description: "Daily fuel or distance cap."
+            description: "Max liters of fuel or KM cap per dispatch."
+          },
+          projectedImpact: {
+            type: Type.STRING,
+            description: "Estimated % improvement or savings (e.g., +15% Throughput)."
           },
           summary: { 
             type: Type.STRING,
-            description: "Executive summary of the architectural changes."
+            description: "Detailed analysis of why these changes are needed."
           },
           roadmap: {
             type: Type.ARRAY,
@@ -56,7 +64,7 @@ export const fineTuneSystemParams = async (currentSettings: any, userGoal: strin
             }
           }
         },
-        required: ["recommendedCommissionRate", "targetEfficiencyMetric", "customerSegmentationAdvice", "logisticsThreshold", "summary", "roadmap"]
+        required: ["recommendedCommissionRate", "targetEfficiencyMetric", "customerSegmentationAdvice", "logisticsThreshold", "projectedImpact", "summary", "roadmap"]
       },
     },
   });

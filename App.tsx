@@ -4,11 +4,12 @@ import {
   LayoutDashboard, Handshake, UserSquare2, Menu, X, Package, 
   PhoneCall, Database, Search, Zap, LogOut, ShieldAlert, UserPlus, Trash2, Edit3, Save, 
   BarChart3, TrendingUp, Target, Award, ShieldCheck, Key, Rocket, Settings2, Plus, Check, Shield, User as UserIcon, Lock,
-  ShoppingCart, ClipboardList, Cloud, CloudOff, RefreshCw, Eye, EyeOff, Info, Briefcase, ReceiptText, Fingerprint, Sparkles, Hammer, Server
+  ShoppingCart, ClipboardList, Cloud, CloudOff, RefreshCw, Eye, EyeOff, Info, Briefcase, ReceiptText, Fingerprint, Sparkles, Hammer, Server, Settings, Wifi, WifiOff
 } from 'lucide-react';
 import { ViewState, Agent, Partner, CallReport, User as UserType, Role, InventoryItem, Order, Sale, WorkOrder } from './types';
 import { api } from './services/api';
 import { prisma } from './services/prisma';
+import { externalDb } from './services/database';
 
 // Import Views
 import DashboardView from './components/DashboardView';
@@ -347,6 +348,7 @@ const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [serverStatus, setServerStatus] = useState<{ status: 'ONLINE' | 'OFFLINE' | 'CHECKING'; latency: number }>({ status: 'CHECKING', latency: 0 });
   
   const [dbData, setDbData] = useState({
     partners: [] as Partner[],
@@ -361,8 +363,18 @@ const App: React.FC = () => {
     config: prisma.config.get()
   });
 
+  const checkConnectivity = useCallback(async () => {
+    setServerStatus(prev => ({ ...prev, status: 'CHECKING' }));
+    const result = await externalDb.checkHealth();
+    setServerStatus({ status: result.status, latency: result.latency });
+    return result.status === 'ONLINE';
+  }, []);
+
   const fetchData = useCallback(async () => {
     setIsLoading(true);
+    // Always check connectivity before fetching to decide if we use server or local
+    await checkConnectivity();
+
     const [partners, agents, calls, orders, workOrders, sales, inventory, users, roles] = await Promise.all([
       api.partners.getAll(),
       api.agents.getAll(),
@@ -376,11 +388,19 @@ const App: React.FC = () => {
     ]);
 
     setDbData({
-      partners, agents, calls, orders, workOrders, sales, inventory, users, roles,
+      partners: partners || [],
+      agents: agents || [],
+      calls: calls || [],
+      orders: orders || [],
+      workOrders: workOrders || [],
+      sales: sales || [],
+      inventory: inventory || [],
+      users: users || [],
+      roles: roles || [],
       config: prisma.config.get()
     });
     setIsLoading(false);
-  }, []);
+  }, [checkConnectivity]);
 
   useEffect(() => {
     fetchData();
@@ -409,12 +429,35 @@ const App: React.FC = () => {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-slate-50 font-sans text-slate-900">
       <header className="bg-white border-b border-slate-200 h-20 flex items-center justify-between px-8 shrink-0 z-40">
-        <div className="flex items-center gap-4 group">
+        <div className="flex items-center gap-6 group">
           <SwiftLogo size="sm" />
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${prisma.dbInfo.getMode() === 'PRODUCTION' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
-            {isLoading ? <RefreshCw size={14} className="animate-spin text-blue-500" /> : <Server size={14} className={prisma.dbInfo.getMode() === 'PRODUCTION' ? 'text-emerald-500 animate-pulse' : 'text-amber-500'} />}
-            {isLoading ? 'Syncing...' : (prisma.dbInfo.getMode() === 'PRODUCTION' ? 'Neon Cloud Linked' : 'Simulation Mode')}
-          </div>
+          <button 
+            onClick={fetchData}
+            title="Refresh Bridge Handshake"
+            className={`flex items-center gap-2.5 px-4 py-2 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-all ${
+              serverStatus.status === 'ONLINE' 
+                ? 'bg-emerald-50 text-emerald-600 border-emerald-100 shadow-lg shadow-emerald-500/10' 
+                : serverStatus.status === 'CHECKING' 
+                  ? 'bg-blue-50 text-blue-600 border-blue-100'
+                  : 'bg-amber-50 text-amber-600 border-amber-100'
+            }`}
+          >
+            {serverStatus.status === 'CHECKING' ? (
+              <RefreshCw size={14} className="animate-spin" />
+            ) : serverStatus.status === 'ONLINE' ? (
+              <Wifi size={14} className="animate-pulse" />
+            ) : (
+              <WifiOff size={14} />
+            )}
+            
+            {serverStatus.status === 'ONLINE' ? (
+              <span>Live Bridge • {serverStatus.latency}ms</span>
+            ) : serverStatus.status === 'CHECKING' ? (
+              <span>Syncing...</span>
+            ) : (
+              <span>Local Simulation</span>
+            )}
+          </button>
         </div>
         <div className="flex items-center gap-6">
            <div className="text-right">
@@ -427,31 +470,49 @@ const App: React.FC = () => {
       
       <div className="flex flex-1 overflow-hidden">
         <aside className={`bg-swift-navy transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'} flex flex-col z-30 shadow-2xl`}>
-          <nav className="flex-1 p-3 space-y-2 mt-4">
-            {[
-              { id: 'DASHBOARD', label: 'Overview', icon: LayoutDashboard, perm: true },
-              { id: 'PORTFOLIO', label: 'My Portfolio', icon: Briefcase, perm: true },
-              { id: 'PARTNERS', label: 'Partner Hub', icon: Handshake, perm: hasPerm('canViewPartners') },
-              { id: 'ORDERS', label: 'Order Hub', icon: ShoppingCart, perm: hasPerm('canViewOrders') },
-              { id: 'WORK_ORDERS', label: 'Shop Floor', icon: Hammer, perm: hasPerm('canViewInventory') },
-              { id: 'SALES', label: 'Sales Ledger', icon: ReceiptText, perm: hasPerm('canViewOrders') },
-              { id: 'AGENTS', label: 'Sales Force', icon: UserSquare2, perm: hasPerm('canViewAgents') },
-              { id: 'CALL_REPORTS', label: 'Interaction Log', icon: PhoneCall, perm: hasPerm('canViewCalls') },
-              { id: 'PRODUCTION', label: 'Inventory', icon: Database, perm: hasPerm('canViewInventory') },
-              { id: 'USER_MANAGEMENT', label: 'Personnel', icon: UserIcon, perm: hasPerm('canManageUsers') },
-              { id: 'ROLE_MANAGEMENT', label: 'Security', icon: Shield, perm: hasPerm('canManageRoles') },
-              { id: 'AI_ARCHITECT', label: 'Strategy AI', icon: Sparkles, perm: isAdmin },
-              { id: 'PRISMA_SCHEMA', label: 'DB Architect', icon: Server, perm: isAdmin },
-            ].map(item => item.perm && (
-              <button key={item.id} onClick={() => setActiveView(item.id as ViewState)}
-                className={`flex items-center w-full gap-4 px-4 py-3.5 rounded-2xl transition-all group ${activeView === item.id ? 'bg-swift-green text-white shadow-lg' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
-              >
-                <item.icon size={20} className={activeView === item.id ? 'animate-pulse' : 'group-hover:scale-110 transition'} />
-                {sidebarOpen && <span className="text-sm font-bold uppercase tracking-tight">{item.label}</span>}
-              </button>
-            ))}
-          </nav>
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-6 text-white/20 hover:text-white transition flex justify-center">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
+            <nav className="p-3 space-y-1 mt-4">
+              <div className="px-4 mb-2">
+                <p className={`text-[8px] font-black uppercase tracking-[0.3em] text-white/30 ${!sidebarOpen && 'hidden'}`}>Core Operations</p>
+              </div>
+              {[
+                { id: 'DASHBOARD', label: 'Overview', icon: LayoutDashboard, perm: true },
+                { id: 'PORTFOLIO', label: 'My Portfolio', icon: Briefcase, perm: true },
+                { id: 'PARTNERS', label: 'Partner Hub', icon: Handshake, perm: hasPerm('canViewPartners') },
+                { id: 'ORDERS', label: 'Order Hub', icon: ShoppingCart, perm: hasPerm('canViewOrders') },
+                { id: 'WORK_ORDERS', label: 'Shop Floor', icon: Hammer, perm: hasPerm('canViewInventory') },
+                { id: 'SALES', label: 'Sales Ledger', icon: ReceiptText, perm: hasPerm('canViewOrders') },
+                { id: 'AGENTS', label: 'Sales Force', icon: UserSquare2, perm: hasPerm('canViewAgents') },
+                { id: 'CALL_REPORTS', label: 'Interaction Log', icon: PhoneCall, perm: hasPerm('canViewCalls') },
+                { id: 'PRODUCTION', label: 'Inventory', icon: Database, perm: hasPerm('canViewInventory') },
+              ].map(item => item.perm && (
+                <button key={item.id} onClick={() => setActiveView(item.id as ViewState)}
+                  className={`flex items-center w-full gap-4 px-4 py-3.5 rounded-2xl transition-all group ${activeView === item.id ? 'bg-swift-green text-white shadow-lg' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+                >
+                  <item.icon size={20} className={activeView === item.id ? 'animate-pulse' : 'group-hover:scale-110 transition'} />
+                  {sidebarOpen && <span className="text-sm font-bold uppercase tracking-tight">{item.label}</span>}
+                </button>
+              ))}
+
+              <div className="px-4 mt-8 mb-2">
+                <p className={`text-[8px] font-black uppercase tracking-[0.3em] text-white/30 ${!sidebarOpen && 'hidden'}`}>System Engine</p>
+              </div>
+              {[
+                { id: 'USER_MANAGEMENT', label: 'Personnel', icon: UserIcon, perm: hasPerm('canManageUsers') },
+                { id: 'ROLE_MANAGEMENT', label: 'Security', icon: Shield, perm: hasPerm('canManageRoles') },
+                { id: 'AI_ARCHITECT', label: 'Strategy AI', icon: Sparkles, perm: isAdmin },
+                { id: 'PRISMA_SCHEMA', label: 'DB Architect', icon: Server, perm: isAdmin },
+              ].map(item => item.perm && (
+                <button key={item.id} onClick={() => setActiveView(item.id as ViewState)}
+                  className={`flex items-center w-full gap-4 px-4 py-3.5 rounded-2xl transition-all group ${activeView === item.id ? 'bg-swift-cyan text-white shadow-lg' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+                >
+                  <item.icon size={20} className={activeView === item.id ? 'animate-pulse' : 'group-hover:scale-110 transition'} />
+                  {sidebarOpen && <span className="text-sm font-bold uppercase tracking-tight">{item.label}</span>}
+                </button>
+              ))}
+            </nav>
+          </div>
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-6 text-white/20 hover:text-white border-t border-white/5 transition flex justify-center">
             {sidebarOpen ? <X size={20}/> : <Menu size={20}/>}
           </button>
         </aside>

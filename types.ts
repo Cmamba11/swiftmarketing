@@ -210,7 +210,7 @@ export interface SystemConfig {
   customerSegmentationAdvice: string[];
   logisticsThreshold: number;
   lastUpdated: string;
+  projectedImpact?: string; // Track the AI's projected impact for the session
 }
 
-// Fixed: Added missing view state identifiers to resolve type overlap errors in App.tsx
 export type ViewState = 'DASHBOARD' | 'PARTNERS' | 'AGENTS' | 'ORDERS' | 'WORK_ORDERS' | 'SALES' | 'PRODUCTION' | 'CALL_REPORTS' | 'PORTFOLIO' | 'USER_MANAGEMENT' | 'ROLE_MANAGEMENT' | 'PRISMA_SCHEMA' | 'AI_ARCHITECT';
