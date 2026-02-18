@@ -1,8 +1,8 @@
 
 import React, { useState, useMemo } from 'react';
 import { Search, X, Trash2, Layers, Plus, Settings, Handshake, Factory, Weight, History, ArrowUp, ArrowDown, User, Clock, AlertCircle } from 'lucide-react';
-import { Partner, InventoryItem, Role, InventoryLog } from '../types';
-import { prisma } from '../services/prisma';
+import { Partner, InventoryItem, Role, InventoryLog } from './types';
+import { prisma } from './services/prisma';
 
 interface ProductionModuleProps {
   partners: Partner[];
@@ -29,6 +29,7 @@ const ProductionModule: React.FC<ProductionModuleProps> = ({ partners, inventory
     e.preventDefault();
     if (newItem.productType === 'ROLLER' && !newItem.partnerId) return;
     
+    // Using implemented prisma.inventory path
     prisma.inventory.create({ 
       partnerId: newItem.productType === 'PACKING_BAG' ? null : newItem.partnerId,
       productName: newItem.productName,
@@ -46,6 +47,7 @@ const ProductionModule: React.FC<ProductionModuleProps> = ({ partners, inventory
     if (!showAdjust) return;
     try {
       const change = adjustData.type === 'REDUCTION' ? -Math.abs(adjustData.change) : Number(adjustData.change);
+      // Using implemented prisma.inventory path
       prisma.inventory.adjust(showAdjust, change, adjustData.type, adjustData.notes);
       setShowAdjust(null);
       setAdjustData({ change: 0, notes: '', type: 'RESTOCK' });
@@ -59,6 +61,7 @@ const ProductionModule: React.FC<ProductionModuleProps> = ({ partners, inventory
 
   const currentHistoryLogs = useMemo(() => {
     if (!showHistory) return [];
+    // Using implemented prisma.inventory path
     return prisma.inventory.findLogs(showHistory);
   }, [showHistory]);
 
@@ -138,7 +141,7 @@ const ProductionModule: React.FC<ProductionModuleProps> = ({ partners, inventory
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-2">
-                {newItem.productType === 'ROLLER' ? 'Number of Rollers' : 'Number of Packing Bags'}
+                {newItem.productType === 'ROLLER' ? 'Number of Rollers' : 'Number of Bags'}
               </label>
               <input type="number" value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity: Number(e.target.value)})} className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 outline-none font-black text-sm tracking-tight focus:bg-white/10 transition" required />
             </div>

@@ -1,18 +1,16 @@
 
 /**
- * SWIFT PLASTICS - EXTERNAL DATABASE CLIENT (NEON POSTGRES)
- * Handles the connection logic between the UI and the Express Backend.
+ * SWIFT PLASTICS - EXTERNAL DATABASE CLIENT
+ * Dynamic environment detection for Hybrid Deployment.
  */
 
-const IS_PROD = typeof window !== 'undefined' && 
-  (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1');
+// Detect if we are in a production environment
+const isProduction = window.location.hostname !== 'localhost' && !window.location.hostname.includes('127.0.0.1');
 
 const CONFIG = {
-  // Pointing to the local server or deployed API
-  API_URL: IS_PROD 
-    ? 'https://your-deployed-backend-api.vercel.app' 
-    : 'http://localhost:3001', 
-  
+  // Replace this URL once you deploy your server.ts to Cloud Run or Render
+  PROD_API_URL: 'https://your-backend-api-url.com', 
+  DEV_API_URL: 'http://localhost:3001',
   DATABASE_URI: "postgresql://neondb_owner:npg_9SkQWbjABi6o@ep-jolly-shadow-aix9j6ig-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require",
 };
 
@@ -20,8 +18,11 @@ export class ExternalDB {
   private static instance: ExternalDB;
   private _isOnline: boolean = false;
   private _latency: number = 0;
+  private _checkInterval: number | null = null;
 
-  private constructor() {}
+  private constructor() {
+    this.startHeartbeat();
+  }
 
   public static getInstance(): ExternalDB {
     if (!ExternalDB.instance) {
@@ -38,25 +39,26 @@ export class ExternalDB {
     return this._latency;
   }
 
-  public getTargetUri() {
-    return CONFIG.DATABASE_URI.replace(/:[^:@]+@/, ":****@");
-  }
-
   public getApiUrl() {
-    return CONFIG.API_URL;
+    return isProduction ? CONFIG.PROD_API_URL : CONFIG.DEV_API_URL;
   }
 
-  /**
-   * Performs a heartbeat check against the backend.
-   */
+  private startHeartbeat() {
+    if (this._checkInterval) return;
+    this.checkHealth();
+    // Check every 30 seconds
+    this._checkInterval = window.setInterval(() => this.checkHealth(), 30000);
+  }
+
   public async checkHealth(): Promise<{ status: 'ONLINE' | 'OFFLINE'; latency: number }> {
     const start = Date.now();
+    const targetUrl = this.getApiUrl();
+    
     try {
-      const response = await fetch(`${CONFIG.API_URL}/api/health`, { 
+      const response = await fetch(`${targetUrl}/api/health`, { 
         method: 'GET',
-        headers: { 'Accept': 'application/json' },
-        // Short timeout for health checks
-        signal: AbortSignal.timeout(2000) 
+        mode: 'cors',
+        signal: AbortSignal.timeout(3000) 
       });
       
       const latency = Date.now() - start;
@@ -73,13 +75,12 @@ export class ExternalDB {
     }
   }
 
-  /**
-   * Generic Request Wrapper
-   */
   public async request<T>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
+    const targetUrl = this.getApiUrl();
     try {
-      const response = await fetch(`${CONFIG.API_URL}/api${endpoint}`, {
+      const response = await fetch(`${targetUrl}/api${endpoint}`, {
         ...options,
+        mode: 'cors',
         headers: {
           'Content-Type': 'application/json',
           ...options.headers,
@@ -88,7 +89,7 @@ export class ExternalDB {
       if (!response.ok) throw new Error(`API_ERROR: ${response.status}`);
       return await response.json();
     } catch (error) {
-      console.error(`Backend Request Failed [${endpoint}]:`, error);
+      console.error(`Fetch error at ${endpoint}:`, error);
       return null;
     }
   }

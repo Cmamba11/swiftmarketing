@@ -1,4 +1,6 @@
 
+// types.ts - Core system types
+
 export interface Role {
   id: string;
   name: string;
@@ -17,11 +19,14 @@ export interface Role {
   canEditAgents: boolean;
   canDeleteAgents: boolean;
 
-  // Order Permissions
+  // Order & Sales Permissions
   canViewOrders: boolean;
   canCreateOrders: boolean;
   canEditOrders: boolean;
   canDeleteOrders: boolean;
+  canVerifyOrders: boolean;
+  canApproveAsAgentHead: boolean;
+  canApproveAsAccountOfficer: boolean;
 
   // Inventory Permissions
   canViewInventory: boolean;
@@ -29,16 +34,26 @@ export interface Role {
   canEditInventory: boolean;
   canDeleteInventory: boolean;
 
+  // Work Order Permissions
+  canViewWorkOrders: boolean;
+  canManageWorkOrders: boolean; // Start/Complete
+  canDeleteWorkOrders: boolean;
+
   // Call Report Permissions
   canViewCalls: boolean;
   canCreateCalls: boolean;
   canEditCalls: boolean;
   canDeleteCalls: boolean;
 
+  // Logistics Permissions
+  canViewLogistics: boolean;
+  canManageLogistics: boolean;
+
   // Security & Admin
   canViewSecurity: boolean;
   canManageUsers: boolean;
   canManageRoles: boolean;
+  canAccessAIArchitect: boolean;
 }
 
 export interface User {
@@ -66,6 +81,7 @@ export enum VisitOutcome {
 
 export interface Partner {
   id: string;
+  customerId: string;
   name: string;
   type: PartnerType;
   email: string;
@@ -78,6 +94,8 @@ export interface Partner {
   businessCategory: string;
   website?: string;
   defaultRatePerKg?: number;
+  micron: string; 
+  colors: string[]; 
 }
 
 export interface Agent {
@@ -92,9 +110,6 @@ export interface Agent {
   employeeId: string;
   hireDate: string;
   emergencyContact: string;
-  baseSalary: number;
-  weeklyTarget: number;
-  monthlyTarget: number;
   commissionRate: number;
   dataAccuracyScore: number;
   timelinessScore: number;
@@ -105,7 +120,9 @@ export interface Sale {
   orderId: string;
   agentId: string;
   partnerId: string;
-  inventoryItemId: string;
+  inventoryItemId: string; 
+  productName: string;
+  productType: 'ROLLER' | 'PACKING_BAG';
   totalKg: number;
   volume: number;
   unitPrice: number;
@@ -139,30 +156,28 @@ export interface Order {
   id: string;
   partnerId?: string;
   guestCompanyName?: string;
+  importerName?: string;
   items: OrderItem[];
   orderDate: string;
-  status: 'PENDING' | 'AWAITING_PROD' | 'IN_PROD' | 'READY_FOR_DISPATCH' | 'FULFILLED' | 'CANCELLED' | 'PARTIALLY_FULFILLED';
+  status: 'PENDING' | 'AWAITING_PROD' | 'IN_PROD' | 'READY_FOR_DISPATCH' | 'CLOSED' | 'CANCELLED' | 'PARTIALLY_SETTLED';
   totalValue: number;
   internalId: string;
-  pendingDispatch?: {
-    systemOwnerApproved: boolean;
-    accountOfficerApproved: boolean;
-    inventoryItemId: string;
-    totalKg: number;
-    volume: number;
-    notes: string;
-  };
-}
+  
+  // TRIPLE VERIFICATION
+  adminApproved: boolean; 
+  agentHeadApproved: boolean;
+  accountOfficerApproved: boolean;
 
-export interface WorkOrder {
-  id: string;
-  orderId: string;
-  internalId: string;
-  status: 'PENDING' | 'IN_PROD' | 'COMPLETED';
-  startDate?: string;
-  completionDate?: string;
-  priority: 'NORMAL' | 'HIGH' | 'CRITICAL';
-  notes: string;
+  proofOfPayment?: string;
+  
+  // SETTLEMENT TRIPLE VERIFICATION
+  settlementAdminApproved: boolean;
+  settlementAgentHeadApproved: boolean;
+  settlementAccountOfficerApproved: boolean;
+  
+  finalWeight?: number;
+  finalUnits?: number;
+  settlementNotes?: string;
 }
 
 export interface InventoryItem {
@@ -210,7 +225,17 @@ export interface SystemConfig {
   customerSegmentationAdvice: string[];
   logisticsThreshold: number;
   lastUpdated: string;
-  projectedImpact?: string; // Track the AI's projected impact for the session
+  projectedImpact?: string;
 }
 
-export type ViewState = 'DASHBOARD' | 'PARTNERS' | 'AGENTS' | 'ORDERS' | 'WORK_ORDERS' | 'SALES' | 'PRODUCTION' | 'CALL_REPORTS' | 'PORTFOLIO' | 'USER_MANAGEMENT' | 'ROLE_MANAGEMENT' | 'PRISMA_SCHEMA' | 'AI_ARCHITECT';
+export interface WorkOrder {
+  id: string;
+  internalId: string;
+  orderId: string;
+  status: 'PENDING' | 'IN_PROD' | 'COMPLETED';
+  priority: 'CRITICAL' | 'HIGH' | 'NORMAL';
+  startDate?: string;
+  notes?: string;
+}
+
+export type ViewState = 'DASHBOARD' | 'PARTNERS' | 'AGENTS' | 'ORDERS' | 'SALES' | 'WORK_ORDERS' | 'CALL_REPORTS' | 'PORTFOLIO' | 'USER_MANAGEMENT' | 'ROLE_MANAGEMENT' | 'PRISMA_SCHEMA' | 'AI_ARCHITECT';

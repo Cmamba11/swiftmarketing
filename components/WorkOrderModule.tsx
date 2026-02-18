@@ -1,8 +1,9 @@
 
 import React, { useState, useMemo } from 'react';
-import { ClipboardCheck, Hammer, Printer, Clock, CheckCircle2, AlertTriangle, Search, ArrowRight, Package, Hash, Calendar, FileText, User, ArrowUpCircle, Info, X, RefreshCw } from 'lucide-react';
+import { ClipboardCheck, Hammer, Printer, Clock, CheckCircle2, AlertTriangle, Search, ArrowRight, Package, Hash, Calendar, FileText, User, ArrowUpCircle, Info, X, RefreshCw, Trash2, Ruler, Palette, MapPin, Fingerprint } from 'lucide-react';
 import { WorkOrder, Order, Partner, Role } from '../types';
 import { api } from '../services/api';
+import { COLOR_OPTIONS } from '../constants';
 
 interface WorkOrderModuleProps {
   workOrders: WorkOrder[];
@@ -38,6 +39,14 @@ const WorkOrderModule: React.FC<WorkOrderModuleProps> = ({ workOrders, orders, p
     setIsProcessing(false);
   };
 
+  const handleDeleteWorkOrder = async (id: string) => {
+    if (confirm("WARNING: Are you sure you want to permanently delete this production ticket? This action cannot be undone.")) {
+      setIsProcessing(true);
+      await api.workOrders.delete(id);
+      setIsProcessing(false);
+    }
+  };
+
   const handlePrint = (id: string) => {
     setPrintId(id);
     setTimeout(() => {
@@ -51,6 +60,8 @@ const WorkOrderModule: React.FC<WorkOrderModuleProps> = ({ workOrders, orders, p
     if (p === 'HIGH') return 'bg-orange-500 text-white';
     return 'bg-blue-500 text-white';
   };
+
+  const canDelete = permissions?.isSystemAdmin || permissions?.canDeleteInventory;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20 relative">
@@ -116,9 +127,49 @@ const WorkOrderModule: React.FC<WorkOrderModuleProps> = ({ workOrders, orders, p
 
                   <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Manufacturing Target</p>
-                     <p className="font-black text-swift-navy uppercase italic tracking-tight mb-4">
-                        {partner?.name || order?.guestCompanyName || 'External Project'}
-                     </p>
+                     <div className="flex justify-between items-start mb-4">
+                        <div>
+                           <p className="font-black text-swift-navy uppercase italic tracking-tight text-lg">
+                              {partner?.name || order?.guestCompanyName || 'External Project'}
+                           </p>
+                           {partner && (
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                 <span className="text-[8px] font-black text-slate-400 bg-white px-2 py-0.5 rounded uppercase border border-slate-100">ID: {partner.customerId}</span>
+                                 <span className="text-[8px] font-black text-swift-navy bg-white px-2 py-0.5 rounded uppercase border border-slate-100 flex items-center gap-1"><MapPin size={8}/> {partner.location}</span>
+                              </div>
+                           )}
+                        </div>
+                        {order?.importerName && (
+                           <div className="text-right">
+                              <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Imported By</p>
+                              <span className="text-[10px] font-black text-swift-navy bg-white px-3 py-1 rounded-lg border border-slate-100">{order.importerName}</span>
+                           </div>
+                        )}
+                     </div>
+
+                     {partner && (
+                        <div className="grid grid-cols-2 gap-3 mb-6">
+                           <div className="bg-white p-3 rounded-xl border border-slate-200/50 flex items-center gap-3">
+                              <Ruler size={14} className="text-swift-navy" />
+                              <div>
+                                 <p className="text-[7px] font-black text-slate-400 uppercase">Micron</p>
+                                 <p className="text-xs font-black">{partner.micron}</p>
+                              </div>
+                           </div>
+                           <div className="bg-white p-3 rounded-xl border border-slate-200/50 flex items-center gap-3">
+                              <Palette size={14} className="text-swift-red" />
+                              <div>
+                                 <p className="text-[7px] font-black text-slate-400 uppercase">Colors</p>
+                                 <div className="flex gap-1">
+                                    {partner.colors.map(cId => (
+                                       <div key={cId} className="w-2.5 h-2.5 rounded-full border border-slate-200" style={{ backgroundColor: COLOR_OPTIONS.find(co => co.id === cId)?.hex }} />
+                                    ))}
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                     )}
+
                      <div className="space-y-3">
                         {order?.items.map((item, idx) => (
                           <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200/50">
@@ -174,10 +225,14 @@ const WorkOrderModule: React.FC<WorkOrderModuleProps> = ({ workOrders, orders, p
                       <CheckCircle2 size={16} /> Mark Completed
                     </button>
                   )}
-                  {wo.status === 'COMPLETED' && (
-                    <div className="flex-[2] py-4 bg-emerald-50 text-emerald-600 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2">
-                       <CheckCircle2 size={16} /> Order Fulfillable
-                    </div>
+                  {canDelete && (
+                     <button 
+                        onClick={() => handleDeleteWorkOrder(wo.id)}
+                        disabled={isProcessing}
+                        className="p-4 bg-white border border-slate-200 rounded-2xl text-slate-300 hover:text-red-500 transition shadow-sm"
+                     >
+                        <Trash2 size={18} />
+                     </button>
                   )}
                </div>
             </div>
@@ -190,44 +245,89 @@ const WorkOrderModule: React.FC<WorkOrderModuleProps> = ({ workOrders, orders, p
            <div className="max-w-4xl mx-auto space-y-12">
               <div className="flex justify-between items-start border-b-4 border-black pb-8">
                  <div>
-                    <h1 className="text-5xl font-black italic uppercase tracking-tighter">SWIFT PLASTICS</h1>
-                    <p className="text-sm font-bold mt-2">INDUSTRIAL PRODUCTION MANIFEST • LOGISTICS V4</p>
+                    <h1 className="text-5xl font-black italic uppercase tracking-tighter leading-none">SWIFT PLASTICS</h1>
+                    <p className="text-sm font-bold mt-2">INDUSTRIAL PRODUCTION MANIFEST • LOGISTICS V4.6</p>
                  </div>
                  <div className="text-right">
                     <p className="text-3xl font-black">{workOrders.find(w => w.id === printId)?.internalId}</p>
-                    <p className="text-xs">GEN_STAMP: {new Date().toISOString()}</p>
+                    <p className="text-xs">SYSTEM_STAMP: {new Date().toISOString()}</p>
                  </div>
               </div>
 
               <div className="grid grid-cols-2 gap-12">
-                 <div className="space-y-4">
-                    <p className="bg-black text-white px-4 py-1 text-xs font-black w-fit uppercase">Target Recipient</p>
-                    {(() => {
-                      const wo = workOrders.find(w => w.id === printId);
-                      const order = orders.find(o => o.id === wo?.orderId);
-                      return (
-                        <div className="space-y-1">
-                           <p className="text-2xl font-black uppercase italic">{order?.partnerId ? partners.find(p => p.id === order.partnerId)?.name : order?.guestCompanyName}</p>
-                           <p className="text-sm">ORDER_REF: {order?.internalId}</p>
-                        </div>
-                      );
-                    })()}
+                 <div className="space-y-6">
+                    <div>
+                       <p className="bg-black text-white px-4 py-1 text-[10px] font-black w-fit uppercase mb-3">Customer Entity</p>
+                       {(() => {
+                         const wo = workOrders.find(w => w.id === printId);
+                         const order = orders.find(o => o.id === wo?.orderId);
+                         const partner = order?.partnerId ? partners.find(p => p.id === order.partnerId) : null;
+                         return (
+                           <div className="space-y-1">
+                              <p className="text-3xl font-black uppercase italic leading-tight">{partner?.name || order?.guestCompanyName || 'INTERNAL PROJECT'}</p>
+                              <div className="flex flex-col gap-1 mt-2">
+                                 <p className="text-xs font-bold">CUSTOMER_ID: {partner?.customerId || 'WALK-IN'}</p>
+                                 <p className="text-xs font-bold">PLANT_LOCATION: {partner?.location || 'LOCAL'}</p>
+                              </div>
+                           </div>
+                         );
+                       })()}
+                    </div>
+                    <div>
+                       <p className="bg-black text-white px-4 py-1 text-[10px] font-black w-fit uppercase mb-3">Import Log</p>
+                       {(() => {
+                         const wo = workOrders.find(w => w.id === printId);
+                         const order = orders.find(o => o.id === wo?.orderId);
+                         return (
+                           <div className="space-y-1">
+                              <p className="text-lg font-bold">OFFICER: {order?.importerName || 'SYSTEM'}</p>
+                              <p className="text-xs">ORDER_REF: {order?.internalId}</p>
+                           </div>
+                         );
+                       })()}
+                    </div>
                  </div>
-                 <div className="space-y-4">
-                    <p className="bg-black text-white px-4 py-1 text-xs font-black w-fit uppercase">Job Priority</p>
-                    <p className="text-2xl font-black uppercase italic">{workOrders.find(w => w.id === printId)?.priority}</p>
+                 <div className="space-y-6">
+                    <div>
+                       <p className="bg-black text-white px-4 py-1 text-[10px] font-black w-fit uppercase mb-3">Technical Specifications</p>
+                       {(() => {
+                         const wo = workOrders.find(w => w.id === printId);
+                         const order = orders.find(o => o.id === wo?.orderId);
+                         const partner = order?.partnerId ? partners.find(p => p.id === order.partnerId) : null;
+                         return partner ? (
+                           <div className="grid grid-cols-2 gap-4 border-2 border-black p-4">
+                              <div className="space-y-1">
+                                 <p className="text-[9px] font-black uppercase opacity-50">MICRON_RATING</p>
+                                 <p className="text-xl font-black">{partner.micron}</p>
+                              </div>
+                              <div className="space-y-1">
+                                 <p className="text-[9px] font-black uppercase opacity-50">COLOR_PALETTE</p>
+                                 <div className="flex flex-wrap gap-2">
+                                    {partner.colors.map(cId => (
+                                       <span key={cId} className="text-[10px] font-black uppercase border border-black px-1.5">{COLOR_OPTIONS.find(co => co.id === cId)?.label}</span>
+                                    ))}
+                                 </div>
+                              </div>
+                           </div>
+                         ) : <p className="text-xs italic opacity-50 border-2 border-black border-dashed p-4">Universal standards apply to walk-in orders</p>;
+                       })()}
+                    </div>
+                    <div>
+                       <p className="bg-black text-white px-4 py-1 text-[10px] font-black w-fit uppercase mb-2">Job Priority</p>
+                       <p className="text-2xl font-black uppercase italic underline decoration-4">{workOrders.find(w => w.id === printId)?.priority}</p>
+                    </div>
                  </div>
               </div>
 
               <div className="space-y-6">
-                 <p className="bg-black text-white px-4 py-1 text-xs font-black w-fit uppercase">Manufacturing Item Breakdown</p>
+                 <p className="bg-black text-white px-4 py-1 text-[10px] font-black w-fit uppercase">Manufacturing Item Breakdown</p>
                  <table className="w-full text-left border-collapse">
                     <thead>
-                       <tr className="border-b-2 border-black">
-                          <th className="py-4 text-xs font-black">PRODUCT_SKU_LABEL</th>
-                          <th className="py-4 text-xs font-black text-center">CATEGORY</th>
-                          <th className="py-4 text-xs font-black text-center">QUANTITY</th>
-                          <th className="py-4 text-xs font-black text-right">WEIGHT (KG)</th>
+                       <tr className="border-b-4 border-black">
+                          <th className="py-4 text-[10px] font-black">PRODUCT_SKU_LABEL</th>
+                          <th className="py-4 text-[10px] font-black text-center">CATEGORY</th>
+                          <th className="py-4 text-[10px] font-black text-center">QUANTITY</th>
+                          <th className="py-4 text-[10px] font-black text-right">WEIGHT (KG)</th>
                        </tr>
                     </thead>
                     <tbody>
@@ -235,11 +335,11 @@ const WorkOrderModule: React.FC<WorkOrderModuleProps> = ({ workOrders, orders, p
                           const wo = workOrders.find(w => w.id === printId);
                           const order = orders.find(o => o.id === wo?.orderId);
                           return order?.items.map((item, i) => (
-                            <tr key={i} className="border-b border-slate-200">
-                               <td className="py-6 text-lg font-bold uppercase">{item.productName}</td>
-                               <td className="py-6 text-center text-sm">{item.productType}</td>
-                               <td className="py-6 text-center text-xl font-black">{item.quantity}</td>
-                               <td className="py-6 text-right text-xl font-black">{item.totalKg || '--'}</td>
+                            <tr key={i} className="border-b-2 border-black/10">
+                               <td className="py-6 text-xl font-black uppercase italic">{item.productName}</td>
+                               <td className="py-6 text-center text-xs font-bold">{item.productType}</td>
+                               <td className="py-6 text-center text-2xl font-black">{item.quantity}</td>
+                               <td className="py-6 text-right text-2xl font-black">{item.totalKg || '--'}</td>
                             </tr>
                           ));
                        })()}
@@ -248,27 +348,27 @@ const WorkOrderModule: React.FC<WorkOrderModuleProps> = ({ workOrders, orders, p
               </div>
 
               <div className="grid grid-cols-3 gap-8 pt-20">
-                 <div className="border-t border-black pt-4">
-                    <p className="text-[10px] font-black uppercase mb-8">Production Head</p>
+                 <div className="border-t-4 border-black pt-4">
+                    <p className="text-[10px] font-black uppercase mb-12">Production Head</p>
                     <div className="h-0.5 bg-slate-100" />
                  </div>
-                 <div className="border-t border-black pt-4">
-                    <p className="text-[10px] font-black uppercase mb-8">Quality Assurance</p>
+                 <div className="border-t-4 border-black pt-4">
+                    <p className="text-[10px] font-black uppercase mb-12">Quality Assurance</p>
                     <div className="h-0.5 bg-slate-100" />
                  </div>
-                 <div className="border-t border-black pt-4">
-                    <p className="text-[10px] font-black uppercase mb-8">Dispatch Authorizer</p>
+                 <div className="border-t-4 border-black pt-4">
+                    <p className="text-[10px] font-black uppercase mb-12">Dispatch Authorizer</p>
                     <div className="h-0.5 bg-slate-100" />
                  </div>
               </div>
 
-              <div className="bg-slate-50 p-8 border-2 border-black border-dashed">
-                 <p className="text-[10px] font-black uppercase mb-2">Internal Shop Notes</p>
-                 <p className="text-sm italic">{workOrders.find(w => w.id === printId)?.notes}</p>
+              <div className="bg-slate-50 p-8 border-4 border-black border-dashed">
+                 <p className="text-[10px] font-black uppercase mb-2 opacity-50">Internal Shop Notes</p>
+                 <p className="text-sm italic font-bold leading-relaxed">{workOrders.find(w => w.id === printId)?.notes || 'NO SPECIAL INSTRUCTIONS RECORDED'}</p>
               </div>
 
               <p className="text-[10px] text-center opacity-30 uppercase font-black tracking-widest pt-12">
-                 Swift Plastics OS • Automated Cloud Ledger • End of Manifest
+                 Swift Plastics OS • Automated Cloud Ledger • Secure Production Manifest • End of Document
               </p>
            </div>
         </div>

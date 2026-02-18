@@ -1,24 +1,73 @@
+
+/**
+ * SWIFT PLASTICS - BACKEND ENGINE (server.ts)
+ * 
+ * SETUP:
+ * 1. npm install express cors @prisma/client
+ * 2. npx prisma generate
+ * 3. npx ts-node server.ts
+ */
 import express from 'express';
 import cors from 'cors';
+// @ts-ignore
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+// Robust CORS for local separation
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+app.use(express.json() as any);
 
 /**
- * --- UTILITIES ---
+ * DATABASE SEEDER
+ * Ensures the system is usable immediately upon ignition.
  */
-const handleErrors = (res: any, error: any, message: string) => {
-  console.error(error);
-  res.status(500).json({ error: message, details: error.message });
-};
+async function seedDatabase() {
+  try {
+    const roleCount = await (prisma as any).role.count();
+    if (roleCount === 0) {
+      console.log("🌱 [SEED] Database empty. Planting System Administrator role...");
+      const adminRole = await (prisma as any).role.create({
+        data: {
+          name: 'System Administrator',
+          description: 'Root access with full industrial control.',
+          isSystemAdmin: true,
+          canViewPartners: true, canCreatePartners: true, canEditPartners: true, canDeletePartners: true,
+          canViewAgents: true, canCreateAgents: true, canEditAgents: true, canDeleteAgents: true,
+          canViewOrders: true, canCreateOrders: true, canEditOrders: true, canDeleteOrders: true,
+          canVerifyOrders: true, canApproveAsAgentHead: true, canApproveAsAccountOfficer: true,
+          canViewWorkOrders: true, canManageWorkOrders: true, canDeleteWorkOrders: true,
+          canViewCalls: true, canCreateCalls: true, canEditCalls: true, canDeleteCalls: true,
+          canViewLogistics: true, canManageLogistics: true,
+          canViewSecurity: true, canManageUsers: true, canManageRoles: true,
+          canAccessAIArchitect: true
+        }
+      });
 
-/**
- * --- HEALTH & DIAGNOSTICS ---
- */
+      console.log("👤 [SEED] Creating default admin user...");
+      await (prisma as any).user.create({
+        data: {
+          username: 'admin',
+          name: 'Chief Administrator',
+          roleId: adminRole.id
+        }
+      });
+      console.log("✅ [SEED] System initialized. Login with 'admin'.");
+    }
+  } catch (err) {
+    console.error("❌ [SEED] Failed to check/seed database:", err);
+  }
+}
+
+seedDatabase();
+
+// --- SYSTEM HEALTH ---
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ONLINE', 
@@ -28,212 +77,202 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-/**
- * --- PARTNERS (Wholesalers) ---
- */
+// --- PARTNERS ---
 app.get('/api/partners', async (req, res) => {
   try {
-    const partners = await prisma.partner.findMany({
-      orderBy: { name: 'asc' }
-    });
+    const partners = await (prisma as any).partner.findMany({ orderBy: { name: 'asc' } });
     res.json(partners);
-  } catch (err) { handleErrors(res, err, "Failed to fetch partners"); }
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/partners', async (req, res) => {
   try {
-    const partner = await prisma.partner.create({ data: req.body });
+    const partner = await (prisma as any).partner.create({ data: req.body });
     res.json(partner);
-  } catch (err) { handleErrors(res, err, "Failed to create partner"); }
-});
-
-app.put('/api/partners/:id', async (req, res) => {
-  try {
-    const partner = await prisma.partner.update({
-      where: { id: req.params.id },
-      data: req.body
-    });
-    res.json(partner);
-  } catch (err) { handleErrors(res, err, "Failed to update partner"); }
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/partners/:id', async (req, res) => {
   try {
-    await prisma.partner.delete({ where: { id: req.params.id } });
-    res.status(204).send();
-  } catch (err) { handleErrors(res, err, "Failed to delete partner"); }
+    await (prisma as any).partner.delete({ where: { id: req.params.id } });
+    res.sendStatus(204);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-/**
- * --- SALES AGENTS (Personnel) ---
- */
+// --- AGENTS ---
 app.get('/api/agents', async (req, res) => {
   try {
-    const agents = await prisma.salesAgent.findMany();
+    const agents = await (prisma as any).agent.findMany();
     res.json(agents);
-  } catch (err) { handleErrors(res, err, "Failed to fetch agents"); }
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/agents', async (req, res) => {
   try {
-    const agent = await prisma.salesAgent.create({ data: req.body });
+    const agent = await (prisma as any).agent.create({ data: req.body });
     res.json(agent);
-  } catch (err) { handleErrors(res, err, "Failed to create agent"); }
-});
-
-app.put('/api/agents/:id', async (req, res) => {
-  try {
-    const agent = await prisma.salesAgent.update({
-      where: { id: req.params.id },
-      data: req.body
-    });
-    res.json(agent);
-  } catch (err) { handleErrors(res, err, "Failed to update agent"); }
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/agents/:id', async (req, res) => {
   try {
-    await prisma.salesAgent.delete({ where: { id: req.params.id } });
-    res.status(204).send();
-  } catch (err) { handleErrors(res, err, "Failed to delete agent"); }
+    await (prisma as any).agent.delete({ where: { id: req.params.id } });
+    res.sendStatus(204);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-/**
- * --- ORDERS & WORK ORDERS ---
- */
+// --- ORDERS ---
 app.get('/api/orders', async (req, res) => {
   try {
-    const orders = await prisma.order.findMany({ 
-      include: { items: true },
-      orderBy: { orderDate: 'desc' }
-    });
+    const orders = await (prisma as any).order.findMany({ include: { items: true } });
     res.json(orders);
-  } catch (err) { handleErrors(res, err, "Failed to fetch orders"); }
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/orders', async (req, res) => {
   try {
     const { items, ...orderData } = req.body;
-    const order = await prisma.order.create({
+    const internalId = `ORD-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    const order = await (prisma as any).order.create({
       data: {
         ...orderData,
+        internalId,
+        status: 'PENDING',
         items: { create: items }
       },
       include: { items: true }
     });
     res.json(order);
-  } catch (err) { handleErrors(res, err, "Failed to create order"); }
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-app.patch('/api/orders/:id', async (req, res) => {
+app.post('/api/orders/:id/approve', async (req, res) => {
   try {
-    const order = await prisma.order.update({
+    const { type } = req.body;
+    const update: any = {};
+    if (type === 'ADMIN') update.adminApproved = true;
+    if (type === 'AGENT_HEAD') update.agentHeadApproved = true;
+    if (type === 'ACCOUNT_OFFICER') update.accountOfficerApproved = true;
+    
+    const order = await (prisma as any).order.update({
       where: { id: req.params.id },
-      data: req.body
+      data: update
     });
     res.json(order);
-  } catch (err) { handleErrors(res, err, "Failed to update order"); }
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-app.get('/api/workOrders', async (req, res) => {
+// --- WORK ORDERS ---
+app.get('/api/work-orders', async (req, res) => {
   try {
-    const workOrders = await prisma.workOrder.findMany();
-    res.json(workOrders);
-  } catch (err) { handleErrors(res, err, "Failed to fetch work orders"); }
+    const wos = await (prisma as any).workOrder.findMany();
+    res.json(wos);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/workOrders', async (req, res) => {
+app.post('/api/work-orders/issue', async (req, res) => {
   try {
-    const workOrder = await prisma.workOrder.create({ data: req.body });
-    res.json(workOrder);
-  } catch (err) { handleErrors(res, err, "Failed to create work order"); }
+    const { orderId } = req.body;
+    const internalId = `WO-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    const wo = await (prisma as any).workOrder.create({
+      data: { orderId, internalId, status: 'PENDING', priority: 'NORMAL' }
+    });
+    await (prisma as any).order.update({
+      where: { id: orderId },
+      data: { status: 'AWAITING_PROD' }
+    });
+    res.json(wo);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/workOrders/:id', async (req, res) => {
+app.patch('/api/work-orders/:id/status', async (req, res) => {
   try {
-    const workOrder = await prisma.workOrder.update({
+    const { status } = req.body;
+    const wo = await (prisma as any).workOrder.update({
       where: { id: req.params.id },
-      data: req.body
+      data: { status, startDate: status === 'IN_PROD' ? new Date().toISOString() : undefined }
     });
-    res.json(workOrder);
-  } catch (err) { handleErrors(res, err, "Failed to update work order"); }
-});
-
-/**
- * --- INVENTORY & LOGS ---
- */
-app.get('/api/inventory', async (req, res) => {
-  try {
-    const inventory = await prisma.inventory.findMany({
-      orderBy: { productName: 'asc' }
+    
+    // Auto-update order status
+    let orderStatus = 'IN_PROD';
+    if (status === 'COMPLETED') orderStatus = 'READY_FOR_DISPATCH';
+    await (prisma as any).order.update({
+      where: { id: wo.orderId },
+      data: { status: orderStatus }
     });
-    res.json(inventory);
-  } catch (err) { handleErrors(res, err, "Failed to fetch inventory"); }
+    
+    res.json(wo);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-app.get('/api/inventory/:id/logs', async (req, res) => {
+// --- CONFIG ---
+app.get('/api/config', async (req, res) => {
   try {
-    const logs = await prisma.inventoryLog.findMany({
-      where: { inventoryItemId: req.params.id },
-      orderBy: { timestamp: 'desc' }
+    let config = await (prisma as any).systemConfig.findFirst();
+    if (!config) {
+      config = await (prisma as any).systemConfig.create({
+        data: {
+          recommendedCommissionRate: 10,
+          targetEfficiencyMetric: 'Lead Conversion',
+          customerSegmentationAdvice: ['SMB', 'Enterprise'],
+          logisticsThreshold: 50,
+          lastUpdated: new Date().toISOString()
+        }
+      });
+    }
+    res.json(config);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/config', async (req, res) => {
+  try {
+    const config = await (prisma as any).systemConfig.findFirst();
+    const updated = await (prisma as any).systemConfig.update({
+      where: { id: config.id },
+      data: { ...req.body, lastUpdated: new Date().toISOString() }
     });
-    res.json(logs);
-  } catch (err) { handleErrors(res, err, "Failed to fetch inventory logs"); }
+    res.json(updated);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/inventory', async (req, res) => {
+// --- USERS & ROLES ---
+app.get('/api/users', async (req, res) => {
   try {
-    const item = await prisma.inventory.create({ data: req.body });
-    res.json(item);
-  } catch (err) { handleErrors(res, err, "Failed to create inventory item"); }
+    const users = await (prisma as any).user.findMany();
+    res.json(users);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-app.patch('/api/inventory/:id', async (req, res) => {
+app.post('/api/users', async (req, res) => {
   try {
-    const item = await prisma.inventory.update({
-      where: { id: req.params.id },
-      data: req.body
-    });
-    res.json(item);
-  } catch (err) { handleErrors(res, err, "Failed to adjust inventory"); }
+    const user = await (prisma as any).user.create({ data: req.body });
+    res.json(user);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-/**
- * --- SALES & INTERACTIONS ---
- */
-app.get('/api/sales', async (req, res) => {
+app.delete('/api/users/:id', async (req, res) => {
   try {
-    const sales = await prisma.sale.findMany({ orderBy: { date: 'desc' } });
-    res.json(sales);
-  } catch (err) { handleErrors(res, err, "Failed to fetch sales ledger"); }
+    await (prisma as any).user.delete({ where: { id: req.params.id } });
+    res.sendStatus(204);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/sales', async (req, res) => {
+app.get('/api/roles', async (req, res) => {
   try {
-    const sale = await prisma.sale.create({ data: req.body });
-    res.json(sale);
-  } catch (err) { handleErrors(res, err, "Failed to record sale"); }
+    const roles = await (prisma as any).role.findMany();
+    res.json(roles);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-app.get('/api/calls', async (req, res) => {
+app.post('/api/roles', async (req, res) => {
   try {
-    const calls = await prisma.callReport.findMany({ orderBy: { date: 'desc' } });
-    res.json(calls);
-  } catch (err) { handleErrors(res, err, "Failed to fetch call reports"); }
+    const role = await (prisma as any).role.create({ data: req.body });
+    res.json(role);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/calls', async (req, res) => {
-  try {
-    const call = await prisma.callReport.create({ data: req.body });
-    res.json(call);
-  } catch (err) { handleErrors(res, err, "Failed to create call report"); }
-});
-
-const PORT = process.env.PORT || 3001;
+const PORT = 3001;
 app.listen(PORT, () => {
-  console.log(`
-  🚀 SWIFT PLASTICS OS - FULL CRUD ENGINE ACTIVE
-  📡 API PORT: ${PORT}
-  🛠 MODE: RESTFUL JSON
-  `);
+  console.log(`📡 [SWIFT ENGINE] Backend active on port ${PORT}`);
+  console.log(`🔗 [DB TARGET] Neon PostgreSQL Instance`);
 });

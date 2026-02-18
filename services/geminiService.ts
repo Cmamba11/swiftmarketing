@@ -1,55 +1,49 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
+import { BUSINESS_LOGIC } from "../constants";
 
-export const fineTuneSystemParams = async (currentSettings: any, userGoal: string, focusArea: string) => {
+/**
+ * AI ARCHITECT ENGINE - TIER 1 SYSTEM TUNER
+ * This service takes your roadmap and converts it into application variables.
+ */
+export const fineTuneSystemParams = async (currentSettings: any, userRoadmap: string, focusArea: string) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
+  const prompt = `You are the Lead Systems Architect for Swift Plastics Inc. 
+    A user has provided a personal ROADMAP for their business operations.
+    
+    USER ROADMAP: "${userRoadmap}"
+    FOCUS AREA: ${focusArea}
+    
+    CURRENT SYSTEM VERSION: ${BUSINESS_LOGIC.SYSTEM_VERSION}
+    CURRENT CONFIG: ${JSON.stringify(currentSettings)}
+
+    TASK:
+    Analyze the user's roadmap and calculate the exact SYSTEM OVERRIDES required to achieve these goals. 
+    You must provide realistic industrial numbers.
+
+    OUTPUT SCHEMA REQUIREMENTS:
+    - recommendedCommissionRate: Adjusted percentage for agents based on roadmap goals.
+    - logisticsThreshold: Fuel cap (Liters) optimized for the described routes.
+    - targetEfficiencyMetric: A catchy 3-word KPI name for this roadmap phase.
+    - roadmap: A 3-phase execution plan.
+    - projectedImpact: A percentage or dollar value estimate of improvement.
+    - customLogicOverrides: A JSON object of specific internal logic shifts.`;
+
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-preview',
-    contents: `You are the Lead Systems Architect for Swift Plastics Inc. 
-    We are fine-tuning the Industrial OS based on our current roadmap.
-    
-    FOCUS AREA: ${focusArea}
-    USER OBJECTIVE: ${userGoal}
-    CURRENT SYSTEM CONFIG: ${JSON.stringify(currentSettings)}
-    
-    TASKS:
-    1. Analyze the current metrics.
-    2. Propose a specific numerical shift for Commission Rates and Logistics Thresholds.
-    3. Generate a 3-phase execution roadmap.
-    4. Provide a "Strategy Summary" for the board.
-    
-    CRITICAL: The logic must adhere to the "ORDER -> SALES -> PARTNER INVENTORY" loop.`,
+    contents: prompt,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          recommendedCommissionRate: { 
-            type: Type.NUMBER,
-            description: "The optimized commission percentage (e.g., 2.5)."
-          },
-          targetEfficiencyMetric: { 
-            type: Type.STRING,
-            description: "A short, catchy KPI name for the dashboard."
-          },
-          customerSegmentationAdvice: { 
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: "Actionable steps for partner handling."
-          },
-          logisticsThreshold: { 
-            type: Type.NUMBER,
-            description: "Max liters of fuel or KM cap per dispatch."
-          },
-          projectedImpact: {
-            type: Type.STRING,
-            description: "Estimated % improvement or savings (e.g., +15% Throughput)."
-          },
-          summary: { 
-            type: Type.STRING,
-            description: "Detailed analysis of why these changes are needed."
-          },
+          recommendedCommissionRate: { type: Type.NUMBER },
+          targetEfficiencyMetric: { type: Type.STRING },
+          customerSegmentationAdvice: { type: Type.ARRAY, items: { type: Type.STRING } },
+          logisticsThreshold: { type: Type.NUMBER },
+          projectedImpact: { type: Type.STRING },
+          summary: { type: Type.STRING },
           roadmap: {
             type: Type.ARRAY,
             items: {
