@@ -55,8 +55,10 @@ const OrderModule: React.FC<OrderModuleProps> = ({ orders, partners, agents, cur
 
   useEffect(() => {
     if (selectedPartner && !isWalkIn) {
-      if (selectedPartner.defaultRatePerKg) {
+      if (currentItem.productType === 'ROLLER' && selectedPartner.defaultRatePerKg) {
         setCurrentItem(prev => ({ ...prev, ratePerKg: selectedPartner.defaultRatePerKg! }));
+      } else if (currentItem.productType === 'PACKING_BAG' && (selectedPartner as any).ratePerBags) {
+        setCurrentItem(prev => ({ ...prev, ratePerKg: (selectedPartner as any).ratePerBags! }));
       }
     } else if (isWalkIn) {
       setCurrentItem(prev => ({ ...prev, ratePerKg: currentItem.productType === 'ROLLER' ? 15.5 : 0.45 })); 
@@ -192,14 +194,36 @@ const OrderModule: React.FC<OrderModuleProps> = ({ orders, partners, agents, cur
                     <option value="PACKING_BAG">Poly Packaging</option>
                   </select>
                 </div>
+                
+                {currentItem.productType === 'ROLLER' ? (
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Weight (KG)</label>
+                    <input type="number" value={currentItem.totalKg} onChange={e => setCurrentItem({...currentItem, totalKg: Number(e.target.value)})} className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-bold" min="1" />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quantity (Bags)</label>
+                    <input type="number" value={currentItem.quantity} onChange={e => setCurrentItem({...currentItem, quantity: Number(e.target.value)})} className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-bold" min="1" />
+                  </div>
+                )}
+                
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rate</label>
+                  <input type="number" step="0.01" value={currentItem.ratePerKg} onChange={e => setCurrentItem({...currentItem, ratePerKg: Number(e.target.value)})} className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-bold" min="0" />
+                </div>
                 <button type="button" onClick={handleAddItem} className="w-full py-5 bg-swift-red text-white rounded-[1.5rem] font-black uppercase tracking-widest hover:bg-swift-navy transition shadow-xl mt-4">Append to Manifest</button>
               </div>
               <div className="lg:col-span-8">
                 <div className="bg-slate-50 p-6 rounded-[2.5rem] min-h-[400px]">
                   {pendingItems.length > 0 ? pendingItems.map((item, idx) => (
                     <div key={idx} className="bg-white p-5 rounded-2xl border border-slate-200 flex justify-between items-center mb-3">
-                      <p className="font-black text-swift-navy uppercase italic">{item.productName}</p>
-                      <button onClick={() => handleRemoveItem(idx)} className="text-[8px] font-black text-red-400 uppercase">Remove</button>
+                      <div>
+                        <p className="font-black text-swift-navy uppercase italic">{item.productName}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">
+                          {item.productType === 'ROLLER' ? `${item.totalKg} KG @ $${item.ratePerKg}/KG` : `${item.quantity} Bags @ $${item.ratePerKg}/Bag`}
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => handleRemoveItem(idx)} className="text-[8px] font-black text-red-400 uppercase">Remove</button>
                     </div>
                   )) : <div className="flex items-center justify-center h-full opacity-20">Manifest Empty</div>}
                 </div>

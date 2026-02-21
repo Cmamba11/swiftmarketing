@@ -94,6 +94,7 @@ export interface Partner {
   businessCategory: string;
   website?: string;
   defaultRatePerKg?: number;
+  ratePerBags?: number;
   micron: string; 
   colors: string[]; 
 }

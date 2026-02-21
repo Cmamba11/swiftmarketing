@@ -147,6 +147,11 @@ const PartnerModule: React.FC<PartnerModuleProps> = ({ partners, agents, onDelet
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Standard Rate ($/KG)</label>
               <input type="number" step="0.01" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold" value={formData.defaultRatePerKg} onChange={e => setFormData({...formData, defaultRatePerKg: Number(e.target.value)})} required />
             </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Rate per Bags ($)</label>
+              <input type="number" step="0.01" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold" value={(formData as any).ratePerBags || 0} onChange={e => setFormData({...formData, ratePerBags: Number(e.target.value)} as any)} required />
+            </div>
           </div>
           
           <button type="submit" disabled={isProcessing} className="w-full py-6 bg-swift-red text-white rounded-[2rem] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-swift-navy transition-all active:scale-95 disabled:bg-slate-400">
@@ -224,6 +229,7 @@ const PartnerModule: React.FC<PartnerModuleProps> = ({ partners, agents, onDelet
                 <div className="flex items-center gap-2 text-emerald-600">
                   <DollarSign size={18} />
                   <span className="text-lg font-black italic tabular-nums">${partner.defaultRatePerKg || '0.00'}<span className="text-[10px] font-bold uppercase ml-1">/kg</span></span>
+                  <span className="text-lg font-black italic tabular-nums ml-4">${(partner as any).ratePerBags || '0.00'}<span className="text-[10px] font-bold uppercase ml-1">/bag</span></span>
                 </div>
                 <div className="flex gap-2">
                    {canDelete && (
