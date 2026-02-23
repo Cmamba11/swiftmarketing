@@ -92,6 +92,10 @@ const SalesModule: React.FC<SalesModuleProps> = ({ sales, orders, partners, agen
         notes: order.settlementNotes || '',
         date: new Date().toISOString()
       } as any);
+      
+      // Close the order after successful sale creation
+      await api.orders.close(order.id);
+      
       setSettlingOrderId(null);
       setSettlementDraft({ totalKg: 0, volume: 0, notes: '' });
     } catch (err: any) {
@@ -140,7 +144,10 @@ const SalesModule: React.FC<SalesModuleProps> = ({ sales, orders, partners, agen
                   <tr key={sale.id} className="hover:bg-slate-50 transition-all">
                     <td className="py-8"><p className="font-black text-swift-navy italic uppercase">{sale.orderId.substring(0, 8)}</p></td>
                     <td className="py-8"><p className="font-black text-slate-900 uppercase italic">{partners.find(p => p.id === sale.partnerId)?.name || 'Direct Sale'}</p></td>
-                    <td className="py-8 text-center font-black italic">{sale.volume} units / {sale.totalKg}kg</td>
+                    <td className="py-8 text-center font-black italic">
+                      {sale.volume} {sale.productType === 'PACKING_BAG' ? 'bags' : 'units'} 
+                      {sale.productType !== 'PACKING_BAG' && ` / ${sale.totalKg}kg`}
+                    </td>
                     <td className="py-8 text-right font-black text-emerald-600 italic text-xl">${(sale.productType === 'ROLLER' ? (sale.totalKg * sale.unitPrice) : (sale.volume * sale.unitPrice)).toLocaleString()}</td>
                   </tr>
                 ))}
@@ -158,7 +165,9 @@ const SalesModule: React.FC<SalesModuleProps> = ({ sales, orders, partners, agen
                        <span className="text-[10px] font-black text-slate-400 uppercase">Ref: {order.internalId}</span>
                     </div>
                  </div>
-                 <button onClick={() => setSettlingOrderId(order.id)} className="px-10 py-5 bg-swift-navy text-white rounded-[2rem] font-black uppercase tracking-widest text-[11px] shadow-lg">Verify & Commit</button>
+                 <button onClick={() => setSettlingOrderId(order.id)} className="px-10 py-5 bg-swift-navy text-white rounded-[2rem] font-black uppercase tracking-widest text-[11px] shadow-lg flex items-center gap-2">
+                    <Send size={14} /> Finalize & Dispatch
+                  </button>
               </div>
             ))}
         </div>
@@ -169,8 +178,18 @@ const SalesModule: React.FC<SalesModuleProps> = ({ sales, orders, partners, agen
           <div className="bg-white rounded-[4rem] w-full max-w-3xl p-12 shadow-3xl animate-in zoom-in-95">
             <h3 className="text-3xl font-black uppercase italic text-swift-navy mb-8">Manifest Settlement</h3>
             <div className="grid grid-cols-2 gap-8 mb-10">
-               <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Weight (KG)</label><input type="number" step="0.1" value={settlementDraft.totalKg} onChange={e => setSettlementDraft({ ...settlementDraft, totalKg: Number(e.target.value) })} className="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-black text-2xl" /></div>
-               <div><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Units</label><input type="number" value={settlementDraft.volume} onChange={e => setSettlementDraft({ ...settlementDraft, volume: Number(e.target.value) })} className="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-black text-2xl" /></div>
+               {settlingOrder.items[0]?.productType !== 'PACKING_BAG' && (
+                 <div>
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Weight (KG)</label>
+                   <input type="number" step="0.1" value={settlementDraft.totalKg} onChange={e => setSettlementDraft({ ...settlementDraft, totalKg: Number(e.target.value) })} className="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-black text-2xl" />
+                 </div>
+               )}
+               <div className={settlingOrder.items[0]?.productType === 'PACKING_BAG' ? 'col-span-2' : ''}>
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                   {settlingOrder.items[0]?.productType === 'PACKING_BAG' ? 'Quantity (Bags)' : 'Units'}
+                 </label>
+                 <input type="number" value={settlementDraft.volume} onChange={e => setSettlementDraft({ ...settlementDraft, volume: Number(e.target.value) })} className="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-black text-2xl" />
+               </div>
             </div>
             <div className="flex gap-4 mb-10">
                <button onClick={() => handleApproveSettlement(settlingOrder.id, 'ADMIN')} disabled={settlingOrder.settlementAdminApproved} className={`flex-1 py-4 rounded-xl font-black uppercase text-[9px] border-2 transition ${settlingOrder.settlementAdminApproved ? 'bg-swift-navy text-white' : 'border-red-500 text-red-500 animate-pulse'}`}>ADM Sign</button>
@@ -179,7 +198,7 @@ const SalesModule: React.FC<SalesModuleProps> = ({ sales, orders, partners, agen
             </div>
             <div className="flex gap-4">
                <button onClick={() => setSettlingOrderId(null)} className="flex-1 py-6 bg-slate-100 rounded-2xl font-black uppercase tracking-widest text-[10px]">Cancel</button>
-               <button onClick={() => handleCommitSale(settlingOrder)} disabled={!settlingOrder.settlementAdminApproved || !settlingOrder.settlementAgentHeadApproved || !settlingOrder.settlementAccountOfficerApproved} className="flex-[2] py-6 bg-swift-red text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-2xl disabled:bg-slate-200 transition">Commit to Revenue</button>
+               <button onClick={() => handleCommitSale(settlingOrder)} disabled={!settlingOrder.settlementAdminApproved || !settlingOrder.settlementAgentHeadApproved || !settlingOrder.settlementAccountOfficerApproved} className="flex-[2] py-6 bg-swift-red text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-2xl disabled:bg-slate-200 transition">Authorize Dispatch & Commit</button>
             </div>
           </div>
         </div>

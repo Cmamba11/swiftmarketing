@@ -177,7 +177,10 @@ const WorkOrderModule: React.FC<WorkOrderModuleProps> = ({ workOrders, orders, p
                                 <Package size={14} className="text-swift-red" />
                                 <span className="text-xs font-bold text-slate-700">{item.productName}</span>
                              </div>
-                             <span className="text-xs font-black text-swift-navy">{item.quantity} units {item.totalKg ? `/ ${item.totalKg}kg` : ''}</span>
+                             <span className="text-xs font-black text-swift-navy">
+                                {item.quantity} {item.productType === 'PACKING_BAG' ? 'bags' : 'units'} 
+                                {item.productType !== 'PACKING_BAG' && item.totalKg ? ` / ${item.totalKg}kg` : ''}
+                             </span>
                           </div>
                         ))}
                      </div>
@@ -327,7 +330,11 @@ const WorkOrderModule: React.FC<WorkOrderModuleProps> = ({ workOrders, orders, p
                           <th className="py-4 text-[10px] font-black">PRODUCT_SKU_LABEL</th>
                           <th className="py-4 text-[10px] font-black text-center">CATEGORY</th>
                           <th className="py-4 text-[10px] font-black text-center">QUANTITY</th>
-                          <th className="py-4 text-[10px] font-black text-right">WEIGHT (KG)</th>
+                          {(() => {
+                             const wo = workOrders.find(w => w.id === printId);
+                             const order = orders.find(o => o.id === wo?.orderId);
+                             return order?.items.some(i => i.productType === 'ROLLER') && <th className="py-4 text-[10px] font-black text-right">WEIGHT (KG)</th>;
+                          })()}
                        </tr>
                     </thead>
                     <tbody>
@@ -338,8 +345,8 @@ const WorkOrderModule: React.FC<WorkOrderModuleProps> = ({ workOrders, orders, p
                             <tr key={i} className="border-b-2 border-black/10">
                                <td className="py-6 text-xl font-black uppercase italic">{item.productName}</td>
                                <td className="py-6 text-center text-xs font-bold">{item.productType}</td>
-                               <td className="py-6 text-center text-2xl font-black">{item.quantity}</td>
-                               <td className="py-6 text-right text-2xl font-black">{item.totalKg || '--'}</td>
+                               <td className="py-6 text-center text-2xl font-black">{item.quantity} {item.productType === 'PACKING_BAG' ? 'BAGS' : ''}</td>
+                               {order?.items.some(i => i.productType === 'ROLLER') && <td className="py-6 text-right text-2xl font-black">{item.productType === 'PACKING_BAG' ? '--' : (item.totalKg || '--')}</td>}
                             </tr>
                           ));
                        })()}

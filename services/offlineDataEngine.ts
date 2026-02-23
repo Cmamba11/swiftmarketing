@@ -196,6 +196,14 @@ export const offlineDataEngine = {
       const state = getRaw();
       state.orders = state.orders.filter(o => o.id !== id);
       saveRaw(state);
+    },
+    close: (id: string) => {
+      const state = getRaw();
+      const order = state.orders.find(o => o.id === id);
+      if (order) {
+        order.status = 'CLOSED';
+        saveRaw(state);
+      }
     }
   },
   sale: {

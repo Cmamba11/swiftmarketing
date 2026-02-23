@@ -89,6 +89,11 @@ export const api = {
       await externalDb.request(`/orders/${id}`, { method: 'DELETE' });
       window.dispatchEvent(new CustomEvent('prisma-mutation'));
     },
+    close: async (id: string): Promise<void> => {
+      if (!isOnline()) return offlineDataEngine.order.close(id);
+      await externalDb.request(`/orders/${id}/close`, { method: 'POST' });
+      window.dispatchEvent(new CustomEvent('prisma-mutation'));
+    },
   },
   sales: {
     getAll: async (): Promise<Sale[]> => { 
