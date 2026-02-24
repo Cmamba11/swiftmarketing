@@ -61,9 +61,9 @@ const LoginView: React.FC<{ onLogin: (user: UserType) => void }> = ({ onLogin })
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsAuthChecking(true);
+    setError('');
     try {
-      const users = await api.users.getAll();
-      const user = users.find(u => u.username === username);
+      const user = await api.auth.login(username, password);
       if (user) {
         onLogin(user);
       } else {
@@ -97,19 +97,15 @@ const LoginView: React.FC<{ onLogin: (user: UserType) => void }> = ({ onLogin })
             {isAuthChecking ? <RefreshCw className="animate-spin" size={20} /> : 'Initialize Session'}
           </button>
         </form>
-        <p className="text-[8px] text-slate-400 uppercase font-bold text-center tracking-widest">Demo Login: admin / any</p>
+        <p className="text-[8px] text-slate-400 uppercase font-bold text-center tracking-widest">Default Login: admin / admin</p>
       </div>
     </div>
   );
 };
 
 const App: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<UserType | null>(() => {
-    try {
-      const saved = localStorage.getItem('swift_session');
-      return saved ? JSON.parse(saved) : null;
-    } catch (e) { return null; }
-  });
+  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const [activeView, setActiveView] = useState<ViewState>('DASHBOARD');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [serverStatus, setServerStatus] = useState<{ status: 'ONLINE' | 'OFFLINE' | 'CHECKING'; latency: number }>({ status: 'CHECKING', latency: 0 });
@@ -166,22 +162,40 @@ const App: React.FC = () => {
   }, [checkConnectivity]);
 
   useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const me = await api.auth.me();
+        if (active && me) setCurrentUser(me);
+      } finally {
+        if (active) setAuthReady(true);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!authReady) return;
     fetchData();
     const handleMutation = () => fetchData();
     window.addEventListener('prisma-mutation', handleMutation);
     return () => window.removeEventListener('prisma-mutation', handleMutation);
-  }, [fetchData]);
+  }, [authReady, fetchData]);
 
   const handleLogin = (user: UserType) => {
     setCurrentUser(user);
-    localStorage.setItem('swift_session', JSON.stringify(user));
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await api.auth.logout();
+    } catch {}
     setCurrentUser(null);
-    localStorage.removeItem('swift_session');
   };
 
+  if (!authReady) return <div className="min-h-screen bg-slate-900" />;
   if (!currentUser) return <LoginView onLogin={handleLogin} />;
 
   // Permission Logic
@@ -218,7 +232,7 @@ const App: React.FC = () => {
               <p className="text-[10px] font-black uppercase text-slate-400">Current User</p>
               <p className="text-xs font-black text-swift-navy uppercase italic">{currentUser.name}</p>
            </div>
-           <button onClick={handleLogout} className="p-3 text-slate-400 hover:text-red-500 transition-colors"><LogOut size={20} /></button>
+           <button onClick={() => { void handleLogout(); }} className="p-3 text-slate-400 hover:text-red-500 transition-colors"><LogOut size={20} /></button>
         </div>
       </header>
       

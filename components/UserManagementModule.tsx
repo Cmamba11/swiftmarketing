@@ -15,6 +15,7 @@ const UserManagementModule: React.FC<UserManagementModuleProps> = ({ users, role
   const [isProcessing, setIsProcessing] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
+    password: '',
     name: '',
     roleId: '',
     agentId: ''
@@ -25,7 +26,7 @@ const UserManagementModule: React.FC<UserManagementModuleProps> = ({ users, role
     setIsProcessing(true);
     try {
       await api.users.create(formData);
-      setFormData({ username: '', name: '', roleId: '', agentId: '' });
+      setFormData({ username: '', password: '', name: '', roleId: '', agentId: '' });
       setShowAdd(false);
     } catch (err) {
       alert("Failed to provision user.");
@@ -65,10 +66,14 @@ const UserManagementModule: React.FC<UserManagementModuleProps> = ({ users, role
              <Key size={24} className="text-swift-red" />
              Access Provisioning Interface
           </h3>
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
             <div className="space-y-2">
                <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Login Username</label>
                <input type="text" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold" required placeholder="e.g. jsmith" />
+            </div>
+            <div className="space-y-2">
+               <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Initial Password</label>
+               <input type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold" required placeholder="Set password" />
             </div>
             <div className="space-y-2">
                <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Full Personnel Name</label>
@@ -88,7 +93,7 @@ const UserManagementModule: React.FC<UserManagementModuleProps> = ({ users, role
                  {agents.map(a => <option key={a.id} value={a.id}>{a.name} ({a.employeeId})</option>)}
                </select>
             </div>
-            <button type="submit" className="lg:col-span-4 py-6 bg-swift-red text-white rounded-[2rem] font-black uppercase tracking-[0.2em] shadow-2xl mt-4 hover:bg-swift-navy transition">Commit Security Token</button>
+            <button type="submit" className="lg:col-span-5 py-6 bg-swift-red text-white rounded-[2rem] font-black uppercase tracking-[0.2em] shadow-2xl mt-4 hover:bg-swift-navy transition">Commit Security Token</button>
           </form>
         </div>
       )}

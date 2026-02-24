@@ -9,9 +9,28 @@ import { Partner, Agent, Order, Sale, CallReport, User, Role, WorkOrder } from '
  * If the backend is unreachable, it falls back to the Offline Engine for Demo/Sandbox mode.
  */
 
-const isOnline = () => externalDb.isOnline();
+// Backend-only mode: disable browser local-storage fallback paths.
+const isOnline = () => true;
 
 export const api = {
+  auth: {
+    login: async (username: string, password: string): Promise<User | null> => {
+      const res = await externalDb.request<{ ok: boolean; user?: User }>(`/auth/login`, {
+        method: 'POST',
+        body: JSON.stringify({ username, password }),
+      });
+      if (!res?.ok || !res.user) return null;
+      return res.user;
+    },
+    me: async (): Promise<User | null> => {
+      const res = await externalDb.request<{ ok: boolean; user?: User | null }>(`/auth/me`);
+      if (!res?.ok || !res.user) return null;
+      return res.user;
+    },
+    logout: async (): Promise<void> => {
+      await externalDb.request(`/auth/logout`, { method: 'POST' });
+    },
+  },
   partners: {
     getAll: async (): Promise<Partner[]> => { 
       if (!isOnline()) return offlineDataEngine.partner.findMany();
